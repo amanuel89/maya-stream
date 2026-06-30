@@ -7,9 +7,12 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.plugin.PluginSafety
 import com.nuvio.tv.core.profile.ProfileManager
+import com.nuvio.tv.core.sync.PluginCatalogSyncService
 import com.nuvio.tv.core.qr.QrCodeGenerator
 import com.nuvio.tv.core.server.DeviceIpAddress
 import com.nuvio.tv.core.server.RepositoryConfigServer
+import com.nuvio.tv.data.repository.RemoteCatalogRepository
+import com.nuvio.tv.domain.model.RemoteCatalogEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +27,8 @@ import javax.inject.Inject
 @HiltViewModel
 class PluginViewModel @Inject constructor(
     private val pluginManager: PluginManager,
+    private val remoteCatalogRepository: RemoteCatalogRepository,
+    private val pluginCatalogSyncService: PluginCatalogSyncService,
     private val profileManager: ProfileManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -43,6 +48,54 @@ class PluginViewModel @Inject constructor(
     init {
         loadLogoBytes()
         observePluginData()
+        loadPluginCatalog()
+    }
+
+    private fun loadPluginCatalog() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCatalogLoading = true, catalogError = null) }
+            remoteCatalogRepository.fetchPluginCatalog()
+                .onSuccess { entries ->
+                    _uiState.update { it.copy(catalogEntries = entries, isCatalogLoading = false) }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isCatalogLoading = false,
+                            catalogError = error.message
+                        )
+                    }
+                }
+        }
+    }
+
+    fun installCatalogEntry(entry: RemoteCatalogEntry) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(installingCatalogEntryId = entry.id, errorMessage = null) }
+            val result = pluginManager.addRepository(entry.url)
+            result.fold(
+                onSuccess = { repo ->
+                    _uiState.update {
+                        it.copy(
+                            installingCatalogEntryId = null,
+                            successMessage = context.getString(
+                                R.string.plugin_repo_added_with_providers,
+                                repo.name,
+                                repo.scraperCount
+                            )
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            installingCatalogEntryId = null,
+                            errorMessage = context.getString(R.string.plugin_error_add_repo, e.message ?: "")
+                        )
+                    }
+                }
+            )
+        }
     }
 
     private fun loadLogoBytes() {
@@ -103,6 +156,36 @@ class PluginViewModel @Inject constructor(
             PluginUiEvent.RejectPendingRepoChange -> rejectPendingRepoChange()
             PluginUiEvent.ConfirmPendingScraperEnable -> confirmPendingScraperEnable()
             PluginUiEvent.DismissPendingScraperEnable -> dismissPendingScraperEnable()
+            PluginUiEvent.ResyncFromGitHub -> resyncFromGitHub()
+        }
+    }
+
+    private fun resyncFromGitHub() {
+        if (isReadOnly) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncingFromGitHub = true, errorMessage = null) }
+            val result = pluginCatalogSyncService.syncFromGitHub(force = true)
+            loadPluginCatalog()
+            _uiState.update {
+                it.copy(
+                    isSyncingFromGitHub = false,
+                    successMessage = if (result.isSuccess) {
+                        context.getString(
+                            R.string.plugin_resync_success,
+                            result.addedCount,
+                            result.skippedCount
+                        )
+                    } else {
+                        null
+                    },
+                    errorMessage = result.errorMessage
+                        ?: if (result.failedCount > 0) {
+                            context.getString(R.string.plugin_resync_partial_failure, result.failedCount)
+                        } else {
+                            null
+                        }
+                )
+            }
         }
     }
 

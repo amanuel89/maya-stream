@@ -97,12 +97,17 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.nuvio.tv"
+        applicationId = "com.mayastream.tv"
         minSdk = 24
         targetSdk = 36
         versionCode = 1029
         versionName = "0.7.12-beta"
 
+        buildConfigField(
+            "String",
+            "MAYA_STREAM_CATALOG_BASE_URL",
+            buildConfigString(resolveLocalProperty(localProperties, "MAYA_STREAM_CATALOG_BASE_URL", ""))
+        )
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
         buildConfigField("String", "TRAILER_API_URL", "\"${localProperties.getProperty("TRAILER_API_URL", "")}\"")

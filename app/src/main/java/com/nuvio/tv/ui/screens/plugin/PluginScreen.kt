@@ -91,6 +91,7 @@ import com.nuvio.tv.domain.model.LocalScraperResult
 import com.nuvio.tv.domain.model.PluginRepository
 import com.nuvio.tv.domain.model.ScraperInfo
 import com.nuvio.tv.ui.components.LoadingIndicator
+import com.nuvio.tv.ui.components.RemoteCatalogSection
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -172,6 +173,25 @@ fun PluginScreenContent(
             }
 
             if (!viewModel.isReadOnly) {
+                item {
+                    ResyncGitHubSourcesCard(
+                        isLoading = uiState.isSyncingFromGitHub,
+                        onClick = { viewModel.onEvent(PluginUiEvent.ResyncFromGitHub) }
+                    )
+                }
+
+                item {
+                    RemoteCatalogSection(
+                        title = stringResource(R.string.catalog_plugins_title),
+                        subtitle = stringResource(R.string.catalog_plugins_subtitle),
+                        entries = uiState.catalogEntries,
+                        installedUrls = uiState.repositories.map { it.url }.toSet(),
+                        isLoading = uiState.isCatalogLoading,
+                        installingEntryId = uiState.installingCatalogEntryId,
+                        onInstall = { viewModel.installCatalogEntry(it) }
+                    )
+                }
+
                 item {
                     AddRepositoryInline(
                         url = repoUrl,
@@ -574,6 +594,76 @@ private fun AddRepositoryInline(
                     Text(stringResource(R.string.plugin_add_btn))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ResyncGitHubSourcesCard(
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Surface(
+        onClick = onClick,
+        enabled = !isLoading,
+        modifier = Modifier
+            .fillMaxWidth()
+            .onFocusChanged { isFocused = it.isFocused },
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = NuvioTheme.colors.BackgroundCard,
+            focusedContainerColor = NuvioTheme.colors.FocusBackground
+        ),
+        border = ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.Secondary),
+                shape = RoundedCornerShape(18.dp)
+            )
+        ),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(18.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isLoading) {
+                    LoadingIndicator(modifier = Modifier.size(28.dp))
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = if (isFocused) NuvioTheme.colors.Secondary else NuvioTheme.colors.TextSecondary
+                    )
+                }
+                Spacer(modifier = Modifier.width(NuvioTheme.spacing.lg))
+                Column {
+                    Text(
+                        text = stringResource(R.string.plugin_resync_github_title),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = NuvioTheme.colors.TextPrimary
+                    )
+                    Text(
+                        text = stringResource(R.string.plugin_resync_github_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NuvioTheme.colors.TextSecondary
+                    )
+                }
+            }
+            Text(
+                text = stringResource(R.string.plugin_resync_github_button),
+                style = MaterialTheme.typography.labelLarge,
+                color = NuvioTheme.colors.Secondary
+            )
         }
     }
 }

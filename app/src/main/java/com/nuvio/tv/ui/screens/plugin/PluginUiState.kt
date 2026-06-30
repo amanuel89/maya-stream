@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import com.nuvio.tv.core.plugin.TestDiagnostics
 import com.nuvio.tv.domain.model.LocalScraperResult
 import com.nuvio.tv.domain.model.PluginRepository
+import com.nuvio.tv.domain.model.RemoteCatalogEntry
 import com.nuvio.tv.domain.model.ScraperInfo
 
 data class PluginUiState(
@@ -26,7 +27,12 @@ data class PluginUiState(
     // Pending change from phone
     val pendingRepoChange: PendingRepoChangeInfo? = null,
     // Pending scraper enable confirmation
-    val pendingScraperEnable: PendingScraperEnableInfo? = null
+    val pendingScraperEnable: PendingScraperEnableInfo? = null,
+    val catalogEntries: List<RemoteCatalogEntry> = emptyList(),
+    val isCatalogLoading: Boolean = false,
+    val catalogError: String? = null,
+    val installingCatalogEntryId: String? = null,
+    val isSyncingFromGitHub: Boolean = false
 )
 
 data class PendingRepoChangeInfo(
@@ -60,4 +66,5 @@ sealed interface PluginUiEvent {
     object RejectPendingRepoChange : PluginUiEvent
     object ConfirmPendingScraperEnable : PluginUiEvent
     object DismissPendingScraperEnable : PluginUiEvent
+    object ResyncFromGitHub : PluginUiEvent
 }

@@ -1,6 +1,7 @@
 package com.nuvio.tv.domain.model
 
 enum class AppTheme(val displayName: String) {
+    MAYA_STREAM("Maya Stream"),
     CRIMSON("Crimson"),
     OCEAN("Ocean"),
     VIOLET("Violet"),

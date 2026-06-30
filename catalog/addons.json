@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Maya Stream Addon Catalog",
+  "description": "Optional Stremio-compatible metadata and stream addons.",
+  "entries": [
+    {
+      "id": "cinemeta",
+      "name": "Cinemeta",
+      "description": "Official Stremio metadata addon for movies and series discovery.",
+      "url": "https://v3-cinemeta.strem.io/manifest.json",
+      "tags": ["metadata", "official"]
+    },
+    {
+      "id": "torrentio",
+      "name": "Torrentio",
+      "description": "Popular stream addon. Configure providers in the addon settings after install.",
+      "url": "https://torrentio.strem.fun/manifest.json",
+      "tags": ["streams"]
+    }
+  ]
+}

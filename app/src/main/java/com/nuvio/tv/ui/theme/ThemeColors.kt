@@ -24,6 +24,23 @@ data class ThemeColorPalette(
 )
 
 object ThemeColors {
+    val MayaStream = ThemeColorPalette(
+        secondary = Color(0xFFE50914),
+        secondaryVariant = Color(0xFFB20710),
+        focusRing = Color(0xFFE50914),
+        focusBackground = Color(0xFF3D1414),
+        background = Color(0xFF141414),
+        backgroundElevated = Color(0xFF181818),
+        backgroundCard = Color(0xFF1F1F1F),
+        surface = Color(0xFF232323),
+        surfaceVariant = Color(0xFF2F2F2F),
+        panel = Color(0xFF141414),
+        field = Color(0xFF333333),
+        menu = Color(0xFF181818),
+        modal = Color(0xFF181818),
+        playerOverlay = Color(0xCC000000)
+    )
+
     val Crimson = ThemeColorPalette(
         secondary = NuvioPrimitives.red500,
         secondaryVariant = NuvioPrimitives.red600,
@@ -90,6 +107,7 @@ object ThemeColors {
 
     fun getColorPalette(theme: AppTheme): ThemeColorPalette {
         return when (theme) {
+            AppTheme.MAYA_STREAM -> MayaStream
             AppTheme.CRIMSON -> Crimson
             AppTheme.OCEAN -> Ocean
             AppTheme.VIOLET -> Violet

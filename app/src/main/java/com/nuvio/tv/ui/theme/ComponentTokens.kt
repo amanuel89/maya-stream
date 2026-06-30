@@ -85,12 +85,12 @@ data class NuvioComponentTokens(
 object NuvioComponents {
     val tokens = NuvioComponentTokens(
         posterCard = NuvioCardComponentTokens(
-            width = 126.dp,
-            height = 189.dp,
-            cornerRadius = 12.dp,
+            width = 133.dp,
+            height = 200.dp,
+            cornerRadius = 4.dp,
             contentPadding = 8.dp,
             focusedBorderWidth = 2.dp,
-            focusedScale = 1.02f
+            focusedScale = 1.1f
         ),
         backdropCard = NuvioCardComponentTokens(
             width = 320.dp,
@@ -109,12 +109,12 @@ object NuvioComponents {
             focusedScale = 1.02f
         ),
         continueWatchingCard = NuvioCardComponentTokens(
-            width = 260.dp,
-            height = 146.dp,
-            cornerRadius = 12.dp,
+            width = 280.dp,
+            height = 158.dp,
+            cornerRadius = 4.dp,
             contentPadding = 12.dp,
             focusedBorderWidth = 2.dp,
-            focusedScale = 1.02f
+            focusedScale = 1.08f
         ),
         episodeCard = NuvioCardComponentTokens(
             width = 320.dp,

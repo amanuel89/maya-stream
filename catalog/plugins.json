@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "name": "Maya Stream Plugin Catalog",
+  "description": "Fallback browse catalog for plugin repositories.",
+  "entries": [
+    {
+      "id": "yoruix",
+      "name": "yoruix/nuvio-providers",
+      "description": "Community Nuvio provider repository",
+      "url": "https://raw.githubusercontent.com/yoruix/nuvio-providers/refs/heads/main/manifest.json"
+    },
+    {
+      "id": "all-in-one",
+      "name": "D3adlyRocket/All-in-One-Nuvio",
+      "description": "All-in-One Nuvio provider repository",
+      "url": "https://raw.githubusercontent.com/D3adlyRocket/All-in-One-Nuvio/refs/heads/main/manifest.json"
+    },
+    {
+      "id": "michat88",
+      "name": "michat88/nuvio-providers",
+      "description": "Community Nuvio provider repository",
+      "url": "https://raw.githubusercontent.com/michat88/nuvio-providers/refs/heads/main/manifest.json"
+    },
+    {
+      "id": "abinanthankv",
+      "name": "Abinanthankv/NuvioRepo",
+      "description": "Community Nuvio provider repository",
+      "url": "https://raw.githubusercontent.com/Abinanthankv/NuvioRepo/refs/heads/master/manifest.json"
+    },
+    {
+      "id": "realbestia1",
+      "name": "realbestia1/nuvio-providers-it",
+      "description": "Italian Nuvio provider repository",
+      "url": "https://raw.githubusercontent.com/realbestia1/nuvio-providers-it/refs/heads/main/manifest.json"
+    }
+  ]
+}

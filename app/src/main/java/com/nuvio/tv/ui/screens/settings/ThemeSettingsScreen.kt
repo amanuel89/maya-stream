@@ -333,6 +333,7 @@ private fun ThemeSwatchChip(
 
 @Composable
 private fun AppTheme.localizedName(): String = when (this) {
+    AppTheme.MAYA_STREAM -> stringResource(R.string.theme_color_maya_stream)
     AppTheme.CRIMSON -> stringResource(R.string.theme_color_crimson)
     AppTheme.OCEAN -> stringResource(R.string.theme_color_ocean)
     AppTheme.VIOLET -> stringResource(R.string.theme_color_violet)

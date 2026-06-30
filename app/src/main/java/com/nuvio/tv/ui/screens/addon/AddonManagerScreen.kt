@@ -98,6 +98,7 @@ import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.ExperienceMode
 import com.nuvio.tv.ui.components.LoadingIndicator
+import com.nuvio.tv.ui.components.RemoteCatalogSection
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -266,6 +267,18 @@ fun AddonManagerScreen(
             }
 
             if (!viewModel.isReadOnly) {
+                item {
+                    RemoteCatalogSection(
+                        title = stringResource(R.string.catalog_addons_title),
+                        subtitle = stringResource(R.string.catalog_addons_subtitle),
+                        entries = uiState.catalogEntries,
+                        installedUrls = uiState.installedAddons.map { it.baseUrl }.toSet(),
+                        isLoading = uiState.isCatalogLoading,
+                        installingEntryId = uiState.installingCatalogEntryId,
+                        onInstall = { viewModel.installCatalogEntry(it) }
+                    )
+                }
+
                 item {
                     Card(
                         modifier = Modifier

@@ -34,6 +34,8 @@ import com.nuvio.tv.core.server.TraktSourceSearchResultInfo
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
 import com.nuvio.tv.core.trakt.TraktPublicListSourceResolver
+import com.nuvio.tv.core.network.GitHubRawUrlResolver
+import com.nuvio.tv.data.repository.RemoteCatalogRepository
 import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.ExperienceModeDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
@@ -44,6 +46,7 @@ import com.nuvio.tv.domain.model.AddonCatalogCollectionSource
 import com.nuvio.tv.domain.model.ExperienceMode
 import com.nuvio.tv.domain.model.TmdbCollectionSource
 import com.nuvio.tv.domain.model.TmdbCollectionSourceType
+import com.nuvio.tv.domain.model.RemoteCatalogEntry
 import com.nuvio.tv.domain.model.TraktCollectionSource
 import com.nuvio.tv.domain.model.enabledAddons
 import com.nuvio.tv.domain.repository.AddonRepository
@@ -65,6 +68,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AddonManagerViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
+    private val remoteCatalogRepository: RemoteCatalogRepository,
     private val layoutPreferenceDataStore: LayoutPreferenceDataStore,
     private val experienceModeDataStore: ExperienceModeDataStore,
     private val collectionsDataStore: CollectionsDataStore,
@@ -105,6 +109,77 @@ class AddonManagerViewModel @Inject constructor(
         observeCatalogPreferences()
         observeCollections()
         loadLogoBytes()
+        loadAddonCatalog()
+    }
+
+    private fun loadAddonCatalog() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCatalogLoading = true, catalogError = null) }
+            remoteCatalogRepository.fetchAddonCatalog()
+                .onSuccess { entries ->
+                    _uiState.update { it.copy(catalogEntries = entries, isCatalogLoading = false) }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isCatalogLoading = false,
+                            catalogError = error.message
+                        )
+                    }
+                }
+        }
+    }
+
+    fun installCatalogEntry(entry: RemoteCatalogEntry) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    installingCatalogEntryId = entry.id,
+                    error = null,
+                    transientMessage = null
+                )
+            }
+
+            val normalizedUrl = normalizeAddonUrl(GitHubRawUrlResolver.toRawUrl(entry.url))
+            if (normalizedUrl == null) {
+                val message = context.getString(R.string.addon_error_invalid_scheme)
+                _uiState.update {
+                    it.copy(
+                        installingCatalogEntryId = null,
+                        error = message,
+                        transientMessage = message,
+                        transientMessageIsError = true
+                    )
+                }
+                return@launch
+            }
+
+            when (val result = addonRepository.fetchAddon(normalizedUrl)) {
+                is NetworkResult.Success -> {
+                    addonRepository.addAddon(normalizedUrl)
+                    val addonName = result.data.displayName.ifBlank { result.data.baseUrl }
+                    _uiState.update {
+                        it.copy(
+                            installingCatalogEntryId = null,
+                            transientMessage = context.getString(R.string.addon_install_success, addonName),
+                            transientMessageIsError = false
+                        )
+                    }
+                }
+                is NetworkResult.Error -> {
+                    val message = result.message
+                    _uiState.update {
+                        it.copy(
+                            installingCatalogEntryId = null,
+                            error = message,
+                            transientMessage = message,
+                            transientMessageIsError = true
+                        )
+                    }
+                }
+                NetworkResult.Loading -> Unit
+            }
+        }
     }
 
     fun requestAddonSyncNow() {

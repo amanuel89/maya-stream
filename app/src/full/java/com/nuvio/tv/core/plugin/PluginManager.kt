@@ -6,6 +6,7 @@ import com.nuvio.tv.core.plugin.cloudstream.tvTypeFromString
 import com.nuvio.tv.core.plugin.cloudstream.ExternalExtensionLoader
 import com.nuvio.tv.core.plugin.cloudstream.ExternalExtensionRunner
 import com.nuvio.tv.core.plugin.cloudstream.ExternalRepoParser
+import com.nuvio.tv.core.network.GitHubRawUrlResolver
 import com.nuvio.tv.data.local.PluginDataStore
 import com.nuvio.tv.domain.model.ExternalPluginEntry
 import com.nuvio.tv.domain.model.LocalScraperResult
@@ -138,7 +139,7 @@ class PluginManager @Inject constructor(
 
             val request = Request.Builder()
                 .url("https://cutt.ly/$code")
-                .header("User-Agent", "NuvioTV/1.0")
+                .header("User-Agent", "MayaStream/1.0")
                 .build()
 
             noRedirectClient.newCall(request).execute().use { response ->
@@ -161,7 +162,7 @@ class PluginManager @Inject constructor(
             // Fallback: follow redirects and see where we end up
             val request = Request.Builder()
                 .url("https://cutt.ly/$code")
-                .header("User-Agent", "NuvioTV/1.0")
+                .header("User-Agent", "MayaStream/1.0")
                 .build()
 
             httpClient.newCall(request).execute().use { response ->
@@ -292,15 +293,16 @@ class PluginManager @Inject constructor(
      */
     suspend fun addRepository(manifestUrl: String): Result<PluginRepository> = withContext(Dispatchers.IO) {
         try {
+            val githubResolved = GitHubRawUrlResolver.toRawUrl(manifestUrl)
             // Resolve short codes (e.g. "cspr", "0094") via cutt.ly redirect
-            val resolvedUrl = if (isShortCode(manifestUrl)) {
-                Log.d(TAG, "Input looks like a short code: '$manifestUrl'")
-                resolveShortCode(manifestUrl.trim())
+            val resolvedUrl = if (isShortCode(githubResolved)) {
+                Log.d(TAG, "Input looks like a short code: '$githubResolved'")
+                resolveShortCode(githubResolved.trim())
                     ?: return@withContext Result.failure(
-                        Exception("Failed to resolve short code: $manifestUrl")
+                        Exception("Failed to resolve short code: $githubResolved")
                     )
             } else {
-                sanitizeScheme(manifestUrl).trimEnd('/')
+                sanitizeScheme(githubResolved).trimEnd('/')
             }
 
             val sanitizedUrl = resolvedUrl.trimEnd('/')
@@ -934,7 +936,7 @@ class PluginManager @Inject constructor(
         try {
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", "NuvioTV/1.0")
+                .header("User-Agent", "MayaStream/1.0")
                 .build()
             
             httpClient.newCall(request).execute().use { response ->
@@ -987,7 +989,7 @@ class PluginManager @Inject constructor(
                 // Download code
                 val codeRequest = Request.Builder()
                     .url(codeUrl)
-                    .header("User-Agent", "NuvioTV/1.0")
+                    .header("User-Agent", "MayaStream/1.0")
                     .build()
                 
                 val code = httpClient.newCall(codeRequest).execute().use { codeResponse ->

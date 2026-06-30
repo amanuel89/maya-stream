@@ -2,6 +2,7 @@ package com.nuvio.tv.ui.screens.addon
 
 import android.graphics.Bitmap
 import com.nuvio.tv.domain.model.Addon
+import com.nuvio.tv.domain.model.RemoteCatalogEntry
 
 data class AddonManagerUiState(
     val isLoading: Boolean = false,
@@ -16,7 +17,11 @@ data class AddonManagerUiState(
     val qrCodeBitmap: Bitmap? = null,
     val serverUrl: String? = null,
     // Pending change from phone
-    val pendingChange: PendingChangeInfo? = null
+    val pendingChange: PendingChangeInfo? = null,
+    val catalogEntries: List<RemoteCatalogEntry> = emptyList(),
+    val isCatalogLoading: Boolean = false,
+    val catalogError: String? = null,
+    val installingCatalogEntryId: String? = null
 )
 
 data class PendingChangeInfo(
