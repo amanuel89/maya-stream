@@ -3,7 +3,7 @@ package com.nuvio.tv.core.config
 import com.nuvio.tv.BuildConfig
 
 object MayaStreamConfig {
-    const val APP_DISPLAY_NAME = "Maya Stream"
+    const val APP_DISPLAY_NAME = "ማያ Stream"
 
     private const val DEFAULT_CATALOG_BASE =
         "https://raw.githubusercontent.com/amanuel89/maya-stream/main/catalog"

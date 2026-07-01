@@ -1,5 +1,6 @@
 package com.nuvio.tv.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.nuvio.tv.core.config.MayaStreamConfig
 import com.nuvio.tv.core.network.GitHubRawUrlResolver
@@ -8,6 +9,7 @@ import com.nuvio.tv.domain.model.RemoteCatalogEntry
 import com.nuvio.tv.domain.model.RemoteCatalogManifest
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -25,7 +27,8 @@ data class PluginSourceFetchResult(
 
 @Singleton
 class RemoteCatalogRepository @Inject constructor(
-    private val okHttpClient: OkHttpClient
+  private val okHttpClient: OkHttpClient,
+  @ApplicationContext private val context: Context
 ) {
     private val moshi = Moshi.Builder()
         .addLast(KotlinJsonAdapterFactory())
@@ -34,22 +37,33 @@ class RemoteCatalogRepository @Inject constructor(
     private val manifestAdapter = moshi.adapter(RemoteCatalogManifest::class.java)
     private val sourceManifestAdapter = moshi.adapter(PluginSourceManifest::class.java)
 
+    @Volatile
+    private var lastAddonCatalogBody: String? = null
+
+    fun lastFetchedAddonCatalogBody(): String? = lastAddonCatalogBody
+
     suspend fun fetchPluginSourceUrls(): Result<PluginSourceFetchResult> =
         withContext(Dispatchers.IO) {
-            fetchText(MayaStreamConfig.pluginSourcesUrl).mapCatching { body ->
-                parsePluginSources(body)
-            }.recoverCatching { primaryError ->
-                Log.w(TAG, "plugin-sources.json unavailable, falling back to plugins.json: ${primaryError.message}")
-                val fallbackBody = fetchText(MayaStreamConfig.pluginsCatalogUrl).getOrThrow()
-                parsePluginSources(fallbackBody)
-            }
+            fetchText(
+                MayaStreamConfig.pluginSourcesUrl,
+                assetFile = "maya_stream/catalog/plugin-sources.json"
+            )
+                .mapCatching { body -> parsePluginSources(body) }
+                .recoverCatching { primaryError ->
+                    Log.w(TAG, "plugin-sources.json unavailable, falling back to plugins.json: ${primaryError.message}")
+                    val fallbackBody = fetchText(
+                        MayaStreamConfig.pluginsCatalogUrl,
+                        assetFile = "maya_stream/catalog/plugins.json"
+                    ).getOrThrow()
+                    parsePluginSources(fallbackBody)
+                }
         }
 
     suspend fun fetchPluginCatalog(): Result<List<RemoteCatalogEntry>> =
         fetchPluginSourceUrls().map { it.entries }
 
     suspend fun fetchAddonCatalog(): Result<List<RemoteCatalogEntry>> =
-        fetchCatalog(MayaStreamConfig.addonsCatalogUrl)
+        fetchCatalog(MayaStreamConfig.addonsCatalogUrl, assetFile = "maya_stream/catalog/addons.json")
 
     private fun parsePluginSources(body: String): PluginSourceFetchResult {
         val trimmed = body.trim()
@@ -102,8 +116,26 @@ class RemoteCatalogRepository @Inject constructor(
         }
     }
 
-    private suspend fun fetchText(url: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
+    private suspend fun fetchText(url: String, assetFile: String? = null): Result<String> =
+        withContext(Dispatchers.IO) {
+            val networkResult = fetchTextFromNetwork(url)
+            if (networkResult.isSuccess) {
+                return@withContext networkResult
+            }
+
+            val assetPath = assetFile ?: assetPathForUrl(url)
+            if (assetPath != null) {
+                readAsset(assetPath)?.let { body ->
+                    Log.w(TAG, "Using bundled catalog fallback for $assetPath (remote failed)")
+                    return@withContext Result.success(body)
+                }
+            }
+
+            networkResult
+        }
+
+    private fun fetchTextFromNetwork(url: String): Result<String> {
+        return try {
             val rawUrl = GitHubRawUrlResolver.toRawUrl(url)
             val request = Request.Builder()
                 .url(rawUrl)
@@ -113,11 +145,10 @@ class RemoteCatalogRepository @Inject constructor(
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    return@withContext Result.failure(
-                        Exception("Catalog request failed (${response.code})")
-                    )
+                    Result.failure(Exception("Catalog request failed (${response.code})"))
+                } else {
+                    Result.success(response.body?.string().orEmpty())
                 }
-                Result.success(response.body?.string().orEmpty())
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch catalog from $url: ${e.message}", e)
@@ -125,8 +156,25 @@ class RemoteCatalogRepository @Inject constructor(
         }
     }
 
-    private suspend fun fetchCatalog(url: String): Result<List<RemoteCatalogEntry>> =
-        fetchText(url).mapCatching { body ->
+    private fun readAsset(path: String): String? {
+        return try {
+            context.assets.open(path).bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Bundled catalog not found at $path: ${e.message}")
+            null
+        }
+    }
+
+    private fun assetPathForUrl(url: String): String? = when {
+        url.contains("plugin-sources.json") -> "maya_stream/catalog/plugin-sources.json"
+        url.contains("plugins.json") -> "maya_stream/catalog/plugins.json"
+        url.contains("addons.json") -> "maya_stream/catalog/addons.json"
+        else -> null
+    }
+
+    private suspend fun fetchCatalog(url: String, assetFile: String): Result<List<RemoteCatalogEntry>> =
+        fetchText(url, assetFile = assetFile).mapCatching { body ->
+            lastAddonCatalogBody = body
             if (body.isBlank()) return@mapCatching emptyList()
             val manifest = manifestAdapter.fromJson(body)
                 ?: throw IllegalArgumentException("Invalid catalog JSON")
