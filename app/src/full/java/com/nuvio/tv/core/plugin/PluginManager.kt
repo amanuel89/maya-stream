@@ -714,19 +714,19 @@ class PluginManager @Inject constructor(
             }
         }
  
-        // Launch all scrapers concurrently within the channelFlow scope
-        enabledList.forEachIndexed { index, scraper ->
-            launch {
-                if (index > 0) {
-                    kotlinx.coroutines.delay(index * 60L)
-                }
-                try {
-                    val results = executeScraperWithSingleFlight(scraper, tmdbId, mediaType, season, episode)
-                    if (results.isNotEmpty()) {
-                        send(scraper to results)
+        coroutineScope {
+            enabledList.mapIndexed { index, scraper ->
+                launch {
+                    if (index > 0) {
+                        kotlinx.coroutines.delay(index * 60L)
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Scraper ${scraper.name} failed in streaming: ${e.message}")
+                    try {
+                        val results = executeScraperWithSingleFlight(scraper, tmdbId, mediaType, season, episode)
+                        send(scraper to results)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Scraper ${scraper.name} failed in streaming: ${e.message}")
+                        send(scraper to emptyList())
+                    }
                 }
             }
         }

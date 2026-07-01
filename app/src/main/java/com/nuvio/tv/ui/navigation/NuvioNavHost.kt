@@ -1056,14 +1056,16 @@ fun NuvioNavHost(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 showBuiltInHeader = !hideBuiltInHeaders,
-                onNavigateToTrakt = { navController.navigate(Screen.Trakt.route) },
+                // onNavigateToTrakt = { navController.navigate(Screen.Trakt.route) },
+                onNavigateToTrakt = {},
                 onNavigateToAddons = { navController.navigate(Screen.AddonManager.route) },
                 onNavigateToPlugins = { navController.navigate(Screen.Plugins.route) },
                 onNavigateToAuthQrSignIn = { navController.navigate(Screen.AuthQrSignIn.route) },
                 onNavigateToManageProfiles = { navController.navigate(Screen.ManageProfiles.route) },
-                onNavigateToSupportersContributors = {
-                    navController.navigate(Screen.SupportersContributors.route)
-                },
+                // onNavigateToSupportersContributors = {
+                //     navController.navigate(Screen.SupportersContributors.route)
+                // },
+                onNavigateToSupportersContributors = {},
                 onNavigateToLicensesAttributions = {
                     navController.navigate(Screen.LicensesAttributions.route)
                 }
@@ -1078,11 +1080,13 @@ fun NuvioNavHost(
             )
         }
 
+        /*
         composable(Screen.Trakt.route) {
             TraktScreen(
                 onBackPress = { navController.popBackStack() }
             )
         }
+        */
 
         composable(Screen.TmdbSettings.route) {
             TmdbSettingsScreen(
@@ -1105,20 +1109,23 @@ fun NuvioNavHost(
         composable(Screen.About.route) {
             AboutScreen(
                 onBackPress = { navController.popBackStack() },
-                onNavigateToSupportersContributors = {
-                    navController.navigate(Screen.SupportersContributors.route)
-                },
+                // onNavigateToSupportersContributors = {
+                //     navController.navigate(Screen.SupportersContributors.route)
+                // },
+                onNavigateToSupportersContributors = {},
                 onNavigateToLicensesAttributions = {
                     navController.navigate(Screen.LicensesAttributions.route)
                 }
             )
         }
 
+        /*
         composable(Screen.SupportersContributors.route) {
             SupportersContributorsScreen(
                 onBackPress = { navController.popBackStack() }
             )
         }
+        */
 
         composable(Screen.LicensesAttributions.route) {
             LicensesAttributionsScreen(
@@ -1209,11 +1216,13 @@ fun NuvioNavHost(
             )
         }
 
+        /*
         composable(Screen.LayoutSettings.route) {
             LayoutSettingsScreen(
                 onBackPress = { navController.popBackStack() }
             )
         }
+        */
 
         composable(
             route = Screen.CatalogSeeAll.route,

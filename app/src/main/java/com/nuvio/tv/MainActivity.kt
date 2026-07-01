@@ -120,6 +120,7 @@ import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.network.SyncBackendSwitchService
 import com.nuvio.tv.core.profile.ProfileManager
+import com.nuvio.tv.core.sync.MayaStreamStartupService
 import com.nuvio.tv.core.sync.ProfileSettingsSyncService
 import com.nuvio.tv.core.sync.ProfileSyncService
 import com.nuvio.tv.core.sync.StartupSyncService
@@ -137,12 +138,13 @@ import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.ExperienceMode
 import com.nuvio.tv.domain.repository.AddonRepository
+import com.nuvio.tv.core.locale.AppLocales
+import com.nuvio.tv.ui.components.FirstRunLanguageDialog
+import com.nuvio.tv.ui.components.MayaStreamStartupScreen
 import com.nuvio.tv.ui.components.NuvioScrollDefaults
 import com.nuvio.tv.ui.components.ProfileAvatarCircle
 import com.nuvio.tv.ui.navigation.NuvioNavHost
 import com.nuvio.tv.ui.navigation.Screen
-import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
-import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.theme.NuvioComponents
 import com.nuvio.tv.ui.theme.NuvioMotion
@@ -198,6 +200,8 @@ private data class MainUiPrefs(
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private var keepSystemSplashOnScreen = true
+
     @Inject
     lateinit var themeDataStore: ThemeDataStore
 
@@ -241,6 +245,9 @@ class MainActivity : ComponentActivity() {
     lateinit var appOnboardingDataStore: AppOnboardingDataStore
 
     @Inject
+    lateinit var mayaStreamStartupService: MayaStreamStartupService
+
+    @Inject
     lateinit var avatarRepository: AvatarRepository
 
     @Inject
@@ -282,7 +289,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalFoundationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        installSplashScreen().setKeepOnScreenCondition { keepSystemSplashOnScreen }
         super.onCreate(savedInstanceState)
         isFirstResumeAfterCreate = true
         window?.setBackgroundDrawable(null)
@@ -305,8 +312,9 @@ class MainActivity : ComponentActivity() {
         val launchContentType = intent?.getStringExtra("contentType")
 
         setContent {
-            var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
-            var onboardingCompletedThisSession by remember { mutableStateOf(false) }
+            var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(true) }
+            var mayaStartupReady by remember { mutableStateOf(false) }
+            var onboardingCompletedThisSession by remember { mutableStateOf(true) }
             var onboardingProfileSyncInProgress by remember { mutableStateOf(false) }
             val hasSeenAuthQrFlow = remember(appOnboardingDataStore) {
                 appOnboardingDataStore.hasSeenAuthQrOnFirstLaunch.map<Boolean, Boolean?> { it }
@@ -326,6 +334,15 @@ class MainActivity : ComponentActivity() {
                         authSessionNoticeDataStore.consumeNotice(notice)
                     }
                 }
+            }
+
+            LaunchedEffect(Unit) {
+                mayaStreamStartupService.prepareHomeScreen()
+                mayaStartupReady = true
+            }
+
+            LaunchedEffect(mayaStartupReady) {
+                keepSystemSplashOnScreen = !mayaStartupReady
             }
 
             LaunchedEffect(hasSeenAuthQrOnFirstLaunch, authState) {
@@ -472,67 +489,59 @@ class MainActivity : ComponentActivity() {
                         containerColor = NuvioTheme.colors.Background
                     )
                 ) {
-                    if (hasSeenAuthQrOnFirstLaunch == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(NuvioTheme.colors.Background)
+                    val context = LocalContext.current
+                    var showFirstRunLanguage by remember {
+                        mutableStateOf(
+                            !context.getSharedPreferences(AppLocales.PREFS_NAME, Context.MODE_PRIVATE)
+                                .getBoolean(AppLocales.KEY_CHOSEN, false)
+                        )
+                    }
+                    var pendingLanguageRestart by remember { mutableStateOf(false) }
+
+                    LaunchedEffect(pendingLanguageRestart) {
+                        if (pendingLanguageRestart) {
+                            delay(150)
+                            recreate()
+                            pendingLanguageRestart = false
+                        }
+                    }
+
+                    if (!mayaStartupReady || hasSeenAuthQrOnFirstLaunch == null) {
+                        MayaStreamStartupScreen(
+                            message = stringResource(R.string.maya_startup_initializing)
                         )
                         return@Surface
                     }
 
                     if (authState is AuthState.Loading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(NuvioTheme.colors.Background)
+                        MayaStreamStartupScreen(
+                            message = stringResource(R.string.maya_startup_configuring)
                         )
                         return@Surface
                     }
 
-                    if (
-                        hasSeenAuthQrOnFirstLaunch == false &&
-                        authState !is AuthState.FullAccount &&
-                        !onboardingCompletedThisSession
-                    ) {
-                        AuthQrSignInScreen(
-                            onBackPress = {},
-                            onContinue = {
-                                lifecycleScope.launch {
-                                    val shouldRunRemoteOnboardingSync =
-                                        authManager.authState.value is AuthState.FullAccount
-
-                                    if (shouldRunRemoteOnboardingSync) {
-                                        if (onboardingProfileSyncInProgress) return@launch
-                                        onboardingProfileSyncInProgress = true
-                                        val maxAttempts = 3
-                                        var synced = false
-                                        for (attempt in 0 until maxAttempts) {
-                                            val result = profileSyncService.pullFromRemote()
-                                            if (result.isSuccess) {
-                                                synced = true
-                                                break
-                                            }
-                                            if (attempt < maxAttempts - 1) {
-                                                delay(1_000)
-                                            }
-                                        }
-                                        if (!synced) {
-                                            android.util.Log.w(
-                                                "MainActivity",
-                                                "Onboarding profile sync failed after retries; continuing"
-                                            )
-                                        }
+                    if (showFirstRunLanguage) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(NuvioTheme.colors.Background)
+                        ) {
+                            FirstRunLanguageDialog(
+                                onLanguageSelected = { tag ->
+                                    val localeTag = if (tag == "en") "" else tag
+                                    context.getSharedPreferences(AppLocales.PREFS_NAME, Context.MODE_PRIVATE)
+                                        .edit()
+                                        .putBoolean(AppLocales.KEY_CHOSEN, true)
+                                        .putString(AppLocales.KEY_TAG, localeTag)
+                                        .apply()
+                                    LocaleCache.localeTag = localeTag
+                                    showFirstRunLanguage = false
+                                    if (tag != "en") {
+                                        pendingLanguageRestart = true
                                     }
-                                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
-                                    onboardingCompletedThisSession = true
-                                    onboardingProfileSyncInProgress = false
                                 }
-                                if (authManager.authState.value is AuthState.FullAccount) {
-                                    startupSyncService.requestSyncNow()
-                                }
-                            }
-                        )
+                            )
+                        }
                         return@Surface
                     }
 
@@ -551,30 +560,10 @@ class MainActivity : ComponentActivity() {
                         return@Surface
                     }
 
-                    val layoutChosen = mainUiPrefs.hasChosenLayout
-                    if (layoutChosen == null || !mainUiPrefs.experienceModeLoaded || installedAddons == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(NuvioTheme.colors.Background)
-                        )
-                        return@Surface
-                    }
-                    val effectiveExperienceMode = mainUiPrefs.experienceMode
-                        ?: if (layoutChosen) ExperienceMode.ADVANCED else null
-                    val needsExperienceSelection = effectiveExperienceMode == null
-                    val needsEssentialAddonSetup =
-                        effectiveExperienceMode == ExperienceMode.ESSENTIAL &&
-                            installedAddons.orEmpty().isEmpty() &&
-                            !mainUiPrefs.addonSetupSkipped
-
-                    if (needsEssentialAddonSetup) {
-                        EssentialAddonSetupScreen(
-                            onSkip = {
-                                lifecycleScope.launch {
-                                    experienceModeDataStore.setAddonSetupSkipped(true)
-                                }
-                            }
+                    val layoutChosen = mainUiPrefs.hasChosenLayout == true || mayaStartupReady
+                    if (!layoutChosen || !mainUiPrefs.experienceModeLoaded || installedAddons == null) {
+                        MayaStreamStartupScreen(
+                            message = stringResource(R.string.maya_startup_loading_catalog)
                         )
                         return@Surface
                     }
@@ -584,11 +573,7 @@ class MainActivity : ComponentActivity() {
                         mainUiPrefs.modernSidebarBlurPref && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
                     val hideBuiltInHeadersForFloatingPill = modernSidebarEnabled && !sidebarCollapsed
 
-                    val startDestination = when {
-                        needsExperienceSelection -> Screen.ExperienceModeSelection.route
-                        layoutChosen -> Screen.Home.route
-                        else -> Screen.LayoutSelection.route
-                    }
+                    val startDestination = Screen.Home.route
                     val navController = rememberNavController()
                     var optimisticRoute by remember { mutableStateOf<String?>(null) }
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -806,12 +791,7 @@ class MainActivity : ComponentActivity() {
                     // of the NavHost) to hide the app cold-starting while the next source resolves.
                     val autoNextOverlay by externalPlaybackTracker.autoNextOverlay.collectAsState()
                     autoNextOverlay?.let { ov ->
-                        // Back is intercepted at the Activity level (dispatchKeyEvent) so it reliably
-                        // beats the destination screen's BackHandler.
-                        com.nuvio.tv.ui.screens.player.LoadingOverlay(
-                            visible = true,
-                            backdropUrl = ov.backdrop,
-                            logoUrl = ov.logo,
+                        MayaStreamStartupScreen(
                             title = ov.title,
                             message = stringResource(R.string.external_auto_next_loading),
                             modifier = Modifier.fillMaxSize()

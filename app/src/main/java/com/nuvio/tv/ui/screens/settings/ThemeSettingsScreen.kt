@@ -58,6 +58,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.nuvio.tv.core.locale.AppLocales
 import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.AppTheme
@@ -65,8 +66,6 @@ import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.theme.ThemeColors
 import com.nuvio.tv.ui.theme.getFontFamily
 import kotlinx.coroutines.delay
-import java.util.Locale
-
 @Composable
 fun ThemeSettingsScreen(
     viewModel: ThemeSettingsViewModel = hiltViewModel(),
@@ -93,25 +92,19 @@ fun ThemeSettingsContent(
     var pendingLanguageRestart by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    val strLanguageSystem = stringResource(R.string.appearance_language_system)
-    val supportedLocales = remember(strLanguageSystem) {
-        val tags = listOf(
-            "en", "ru", "ar", "bg", "bs", "da", "de", "el", "es", "es-419", "hu", "fr", "in", "it",
-            "no", "pl", "pt-PT", "pt-BR", "tr", "uk", "cs", "sk", "sl", "sv", "ta", "ro", "ja",
-            "nl", "vi", "hi", "lt", "he", "zh-CN", "zh-TW"
-        )
-        listOf(null to strLanguageSystem) + tags.map { tag ->
-            val locale = Locale.forLanguageTag(tag)
-            tag to locale.getDisplayName(locale).replaceFirstChar { it.uppercase() }
-        }.sortedBy { it.second }
+    val supportedLocales = AppLocales.supported.map { (tag, labelRes) ->
+        tag to stringResource(labelRes)
     }
     var selectedTag by remember {
         mutableStateOf(
-            context.getSharedPreferences("app_locale", android.content.Context.MODE_PRIVATE)
-                .getString("locale_tag", null)?.takeIf { it.isNotEmpty() }
+            context.getSharedPreferences(AppLocales.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                .getString(AppLocales.KEY_TAG, null)
+                ?.takeIf { it.isNotEmpty() }
+                ?: "en"
         )
     }
-    val currentLocaleName = supportedLocales.firstOrNull { it.first == selectedTag }?.second ?: stringResource(R.string.appearance_language_system)
+    val currentLocaleName = supportedLocales.firstOrNull { it.first == selectedTag }?.second
+        ?: stringResource(R.string.language_english)
     val strRestartHint = stringResource(R.string.appearance_language_restart_hint)
 
     LaunchedEffect(pendingLanguageRestart, showLanguageDialog) {
@@ -125,7 +118,7 @@ fun ThemeSettingsContent(
     }
 
     val themeScrollState = rememberScrollState()
-    val themeRowState = rememberLazyListState()
+    // val themeRowState = rememberLazyListState()
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -138,6 +131,39 @@ fun ThemeSettingsContent(
                 subtitle = stringResource(R.string.appearance_subtitle)
             )
 
+            SettingsGroupCard(
+                modifier = Modifier.fillMaxWidth(),
+                title = stringResource(R.string.appearance_amoled_mode),
+                subtitle = stringResource(R.string.appearance_amoled_mode_subtitle)
+            ) {
+                SettingsToggleRow(
+                    title = stringResource(R.string.appearance_amoled_mode),
+                    subtitle = stringResource(R.string.appearance_amoled_mode_subtitle),
+                    checked = uiState.amoledMode,
+                    onToggle = {
+                        viewModel.onEvent(ThemeSettingsEvent.ToggleAmoledMode(!uiState.amoledMode))
+                    },
+                    modifier = if (initialFocusRequester != null) {
+                        Modifier.focusRequester(initialFocusRequester)
+                    } else {
+                        Modifier
+                    }
+                )
+                if (uiState.amoledMode) {
+                    SettingsToggleRow(
+                        title = stringResource(R.string.appearance_amoled_surfaces_mode),
+                        subtitle = stringResource(R.string.appearance_amoled_surfaces_mode_subtitle),
+                        checked = uiState.amoledSurfacesMode,
+                        onToggle = {
+                            viewModel.onEvent(
+                                ThemeSettingsEvent.ToggleAmoledSurfacesMode(!uiState.amoledSurfacesMode)
+                            )
+                        }
+                    )
+                }
+            }
+
+            /*
             SettingsGroupCard(
                 modifier = Modifier.fillMaxWidth(),
                 title = stringResource(R.string.appearance_color_theme),
@@ -168,27 +194,8 @@ fun ThemeSettingsContent(
                     }
                     SettingsHorizontalScrollIndicators(state = themeRowState)
                 }
-                SettingsToggleRow(
-                    title = stringResource(R.string.appearance_amoled_mode),
-                    subtitle = stringResource(R.string.appearance_amoled_mode_subtitle),
-                    checked = uiState.amoledMode,
-                    onToggle = {
-                        viewModel.onEvent(ThemeSettingsEvent.ToggleAmoledMode(!uiState.amoledMode))
-                    }
-                )
-                if (uiState.amoledMode) {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.appearance_amoled_surfaces_mode),
-                        subtitle = stringResource(R.string.appearance_amoled_surfaces_mode_subtitle),
-                        checked = uiState.amoledSurfacesMode,
-                        onToggle = {
-                            viewModel.onEvent(
-                                ThemeSettingsEvent.ToggleAmoledSurfacesMode(!uiState.amoledSurfacesMode)
-                            )
-                        }
-                    )
-                }
             }
+            */
 
             SettingsGroupCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -238,10 +245,13 @@ fun ThemeSettingsContent(
             selectedValue = selectedTag,
             onOptionSelected = { tag ->
                 val previousTag = selectedTag
-                val newTag = tag ?: ""
-                context.getSharedPreferences("app_locale", android.content.Context.MODE_PRIVATE)
-                    .edit().putString("locale_tag", newTag).apply()
-                LocaleCache.localeTag = newTag
+                val localeTag = if (tag == "en") "" else tag
+                context.getSharedPreferences(AppLocales.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(AppLocales.KEY_CHOSEN, true)
+                    .putString(AppLocales.KEY_TAG, localeTag)
+                    .apply()
+                LocaleCache.localeTag = localeTag
                 selectedTag = tag
                 showLanguageDialog = false
                 if (previousTag != tag) {

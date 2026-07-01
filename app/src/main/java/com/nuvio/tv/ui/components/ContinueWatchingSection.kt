@@ -217,7 +217,13 @@ fun ContinueWatchingSection(
                     ContinueWatchingCard(
                     item = progress,
                     onClick = { onItemClick(progress) },
-                    onLongPress = { optionsItem = progress },
+                    onLongPress = {
+                        if (showManualPlayOption) {
+                            onPlayManually(progress)
+                        } else {
+                            optionsItem = progress
+                        }
+                    },
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     useEpisodeThumbnails = useEpisodeThumbnails,
                     cardWidth = cardWidth,

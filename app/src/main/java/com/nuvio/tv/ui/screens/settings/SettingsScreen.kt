@@ -121,6 +121,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_experience_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
+    /*
     SettingsSectionSpec(
         category = SettingsCategory.ACCOUNT,
         title = stringResource(R.string.settings_account),
@@ -128,6 +129,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_account_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
+    */
     SettingsSectionSpec(
         category = SettingsCategory.PROFILES,
         title = stringResource(R.string.settings_profiles),
@@ -142,6 +144,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.appearance_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
+    /*
     SettingsSectionSpec(
         category = SettingsCategory.LAYOUT,
         title = stringResource(R.string.settings_layout),
@@ -149,6 +152,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_layout_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
+    */
     SettingsSectionSpec(
         category = SettingsCategory.CONTENT_DISCOVERY,
         title = stringResource(R.string.settings_content_discovery),
@@ -156,6 +160,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_content_discovery_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
+    /*
     SettingsSectionSpec(
         category = SettingsCategory.INTEGRATION,
         title = stringResource(R.string.settings_integration),
@@ -163,6 +168,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = "",
         destination = SettingsSectionDestination.Inline
     ),
+    */
     SettingsSectionSpec(
         category = SettingsCategory.PLAYBACK,
         title = stringResource(R.string.settings_playback),
@@ -170,6 +176,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_playback_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
+    /*
     SettingsSectionSpec(
         category = SettingsCategory.TRAKT,
         title = "Trakt",
@@ -177,6 +184,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_trakt_subtitle),
         destination = SettingsSectionDestination.External
     ),
+    */
     SettingsSectionSpec(
         category = SettingsCategory.ABOUT,
         title = stringResource(R.string.about_title),
@@ -191,6 +199,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_advanced_subtitle),
         destination = SettingsSectionDestination.Inline
     ),
+    /*
     SettingsSectionSpec(
         category = SettingsCategory.DEBUG,
         title = stringResource(R.string.settings_debug),
@@ -198,6 +207,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         subtitle = stringResource(R.string.settings_debug_subtitle),
         destination = SettingsSectionDestination.Inline
     )
+    */
 )
 
 @Composable
@@ -238,12 +248,13 @@ fun SettingsScreen(
         allSectionSpecs.filter { section ->
             when (section.category) {
                 SettingsCategory.EXPERIENCE -> false
-                SettingsCategory.DEBUG -> BuildConfig.IS_DEBUG_BUILD && !isEssentialMode
+                SettingsCategory.ACCOUNT -> false
+                SettingsCategory.LAYOUT -> false
+                SettingsCategory.INTEGRATION -> false
+                SettingsCategory.TRAKT -> false
+                SettingsCategory.DEBUG -> false
                 SettingsCategory.PROFILES -> isPrimaryProfileActive
-                SettingsCategory.ACCOUNT -> isPrimaryProfileActive
-                SettingsCategory.LAYOUT -> true
                 SettingsCategory.CONTENT_DISCOVERY -> true
-                SettingsCategory.INTEGRATION -> true
                 SettingsCategory.ADVANCED -> true
                 else -> true
             }
@@ -448,6 +459,7 @@ fun SettingsScreen(
                                 null
                             }
                         )
+                        /*
                         SettingsCategory.LAYOUT -> LayoutSettingsContent(
                             initialFocusRequester = if (allowDetailAutofocus) {
                                 contentFocusRequesters[SettingsCategory.LAYOUT]
@@ -456,6 +468,7 @@ fun SettingsScreen(
                             },
                             essentialMode = isEssentialMode
                         )
+                        */
                         SettingsCategory.PLAYBACK -> if (isEssentialMode) {
                             EssentialPlaybackSettingsContent(
                                 initialFocusRequester = if (allowDetailAutofocus) {
@@ -492,6 +505,7 @@ fun SettingsScreen(
                                 experienceModeViewModel = experienceModeViewModel
                             )
                         }
+                        /*
                         SettingsCategory.INTEGRATION -> IntegrationSettingsContent(
                             selectedSection = integrationSection,
                             onSelectSection = { integrationSection = it },
@@ -507,6 +521,7 @@ fun SettingsScreen(
                             animeSkipFocusRequester = integrationAnimeSkipFocusRequester,
                             autoFocusEnabled = allowDetailAutofocus
                         )
+                        */
                         SettingsCategory.ABOUT -> AboutSettingsContent(
                             onNavigateToSupportersContributors = onNavigateToSupportersContributors,
                             onNavigateToLicensesAttributions = onNavigateToLicensesAttributions,
@@ -526,11 +541,18 @@ fun SettingsScreen(
                                 null
                             }
                         )
+                        /*
                         SettingsCategory.ACCOUNT -> AccountSettingsInline(
                             onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn
                         )
                         SettingsCategory.DEBUG -> DebugSettingsContent()
                         SettingsCategory.TRAKT -> Unit
+                        */
+                        SettingsCategory.ACCOUNT,
+                        SettingsCategory.LAYOUT,
+                        SettingsCategory.INTEGRATION,
+                        SettingsCategory.TRAKT,
+                        SettingsCategory.DEBUG -> Unit
                     }
                 }
             }

@@ -712,17 +712,21 @@ fun PlayerScreen(
             }
         }
 
-        LoadingOverlay(
+        AnimatedVisibility(
             visible = uiState.showLoadingOverlay && uiState.error == null,
-            backdropUrl = uiState.backdrop,
-            logoUrl = uiState.logo,
-            title = uiState.title,
-            message = uiState.loadingMessage.takeIf { uiState.showPlayerLoadingStatus || uiState.isTorrentStream },
-            progress = uiState.loadingProgress,
+            enter = fadeIn(animationSpec = tween(250)),
+            exit = fadeOut(animationSpec = tween(200)),
             modifier = Modifier
                 .fillMaxSize()
                 .zIndex(2f)
-        )
+        ) {
+            com.nuvio.tv.ui.components.MayaStreamStartupScreen(
+                title = uiState.title ?: stringResource(R.string.app_name),
+                message = uiState.loadingMessage.takeIf {
+                    uiState.showPlayerLoadingStatus || uiState.isTorrentStream
+                } ?: stringResource(R.string.player_loading_starting)
+            )
+        }
 
         if (uiState.playbackIssueReportsEnabled &&
             uiState.showLoadingOverlay &&

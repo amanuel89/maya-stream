@@ -17,7 +17,7 @@ import javax.inject.Singleton
 private val Context.torrentDataStore by preferencesDataStore(name = "torrent_settings")
 
 data class TorrentSettingsData(
-    val p2pEnabled: Boolean = false,
+    val p2pEnabled: Boolean = true,
     val enableUpload: Boolean = true,
     val hideTorrentStats: Boolean = true
 )
@@ -36,7 +36,7 @@ class TorrentSettings @Inject constructor(
 
     val settings: Flow<TorrentSettingsData> = context.torrentDataStore.data.map { prefs ->
         TorrentSettingsData(
-            p2pEnabled = prefs[Keys.P2P_ENABLED] ?: false,
+            p2pEnabled = prefs[Keys.P2P_ENABLED] ?: true,
             enableUpload = prefs[Keys.ENABLE_UPLOAD] ?: true,
             hideTorrentStats = prefs[Keys.HIDE_TORRENT_STATS] ?: true
         )

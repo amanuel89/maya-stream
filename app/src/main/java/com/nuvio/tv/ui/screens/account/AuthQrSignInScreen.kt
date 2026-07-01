@@ -46,6 +46,9 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.AuthState
@@ -116,224 +119,411 @@ fun AuthQrSignInScreen(
         }
     }
     val remainingMillis = uiState.qrLoginExpiresAtMillis?.let { (it - nowMillis).coerceAtLeast(0L) } ?: 0L
+    val isCompactLayout = LocalConfiguration.current.screenWidthDp < 840
 
-    Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isCompactLayout) {
+            AuthQrSignInCompactContent(
+                uiState = uiState,
+                fullAccount = fullAccount,
+                isSignedIn = isSignedIn,
+                isOnboardingMode = isOnboardingMode,
+                remainingMillis = remainingMillis,
+                onSwitchBackend = viewModel::switchDebugBackend,
+                onRefreshOrSignOut = {
+                    if (isSignedIn) viewModel.signOut() else viewModel.startQrLogin()
+                },
+                onSkipOrContinue = {
+                    if (onContinue != null && !isSignedIn) {
+                        viewModel.signOut()
+                    }
+                    viewModel.clearQrLoginSession()
+                    if (onContinue != null) {
+                        onContinue()
+                    } else {
+                        onBackPress()
+                    }
+                }
+            )
+        } else {
+            AuthQrSignInWideContent(
+                uiState = uiState,
+                fullAccount = fullAccount,
+                isSignedIn = isSignedIn,
+                isOnboardingMode = isOnboardingMode,
+                remainingMillis = remainingMillis,
+                onSwitchBackend = viewModel::switchDebugBackend,
+                onRefreshOrSignOut = {
+                    if (isSignedIn) viewModel.signOut() else viewModel.startQrLogin()
+                },
+                onSkipOrContinue = {
+                    if (onContinue != null && !isSignedIn) {
+                        viewModel.signOut()
+                    }
+                    viewModel.clearQrLoginSession()
+                    if (onContinue != null) {
+                        onContinue()
+                    } else {
+                        onBackPress()
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuthQrSignInHeader(
+    isSignedIn: Boolean,
+    fullAccount: AuthState.FullAccount?,
+    uiState: AccountUiState,
+    onSwitchBackend: () -> Unit
+) {
+    Image(
+        painter = painterResource(id = R.drawable.app_logo_wordmark),
+        contentDescription = stringResource(R.string.cd_nuvio),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        contentScale = ContentScale.Fit
+    )
+    Spacer(modifier = Modifier.height(18.dp))
+    Text(
+        text = stringResource(R.string.auth_qr_title),
+        style = MaterialTheme.typography.headlineLarge,
+        color = NuvioTheme.colors.TextPrimary,
+        textAlign = TextAlign.Center
+    )
+    Spacer(modifier = Modifier.height(NuvioTheme.spacing.md))
+    Text(
+        text = if (isSignedIn) {
+            stringResource(R.string.auth_qr_connected)
+        } else {
+            stringResource(R.string.auth_qr_phone_hint)
+        },
+        style = MaterialTheme.typography.bodyLarge,
+        color = NuvioTheme.colors.TextSecondary,
+        textAlign = TextAlign.Center
+    )
+    if (!isSignedIn && uiState.debugBackendSwitchEnabled) {
+        Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
+        DebugSyncBackendSwitchCard(
+            uiState = uiState,
+            requireConfirmation = false,
+            onSwitchBackend = onSwitchBackend
+        )
+    }
+    if (isSignedIn && fullAccount != null) {
+        Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
+        Text(
+            text = fullAccount.email,
+            style = MaterialTheme.typography.titleMedium,
+            color = Color(0xFF7CFF9B),
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = fullAccount.userId,
+            style = MaterialTheme.typography.bodySmall,
+            color = NuvioTheme.colors.TextSecondary,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun AuthQrSignInQrPanel(
+    uiState: AccountUiState,
+    isSignedIn: Boolean,
+    isOnboardingMode: Boolean,
+    remainingMillis: Long
+) {
+    Text(
+        text = stringResource(R.string.auth_qr_account_login),
+        style = MaterialTheme.typography.titleLarge,
+        color = NuvioTheme.colors.TextPrimary
+    )
+    Text(
+        text = if (isSignedIn) {
+            stringResource(R.string.auth_qr_synced_data)
+        } else {
+            stringResource(R.string.auth_qr_scan_instruction)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = NuvioTheme.colors.TextSecondary,
+        textAlign = TextAlign.Center
+    )
+
+    if (isSignedIn && !isOnboardingMode) {
+        AccountConnectedStatsStrip(
+            stats = uiState.connectedStats,
+            isLoading = uiState.isStatsLoading
+        )
+    } else if (isSignedIn && isOnboardingMode) {
+        StatusPill(
+            text = stringResource(R.string.auth_qr_finishing),
+            containerColor = NuvioTheme.colors.BackgroundCard,
+            contentColor = NuvioTheme.colors.TextSecondary
+        )
+    } else {
+        if (uiState.qrLoginBitmap != null) {
+            Image(
+                bitmap = uiState.qrLoginBitmap!!.asImageBitmap(),
+                contentDescription = stringResource(R.string.cd_qr_login),
+                modifier = Modifier
+                    .size(200.dp)
+                    .background(Color.White, RoundedCornerShape(NuvioTheme.radii.md))
+                    .padding(NuvioTheme.spacing.sm),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .background(NuvioTheme.colors.BackgroundCard, RoundedCornerShape(NuvioTheme.radii.md)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (uiState.isLoading) {
+                        stringResource(R.string.auth_qr_generating)
+                    } else {
+                        stringResource(R.string.auth_qr_unavailable)
+                    },
+                    color = NuvioTheme.colors.TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        if (!uiState.qrLoginCode.isNullOrBlank()) {
+            Text(
+                text = stringResource(R.string.auth_qr_code_display, uiState.qrLoginCode!!),
+                style = MaterialTheme.typography.bodyMedium,
+                color = NuvioTheme.colors.TextPrimary,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        if (uiState.qrLoginExpiresAtMillis != null) {
+            Text(
+                text = stringResource(R.string.auth_qr_expires, formatDuration(remainingMillis)),
+                style = MaterialTheme.typography.bodySmall,
+                color = NuvioTheme.colors.TextSecondary
+            )
+        }
+
+        val statusText = uiState.error ?: uiState.qrLoginStatus
+        if (!statusText.isNullOrBlank()) {
+            StatusPill(
+                text = statusText,
+                containerColor = if (uiState.error != null) Color(0x33C62828) else NuvioTheme.colors.BackgroundCard,
+                contentColor = if (uiState.error != null) Color(0xFFFF6E6E) else NuvioTheme.colors.TextSecondary
+            )
+        }
+    }
+}
+
+@Composable
+private fun AuthQrSignInActions(
+    uiState: AccountUiState,
+    isSignedIn: Boolean,
+    isOnboardingMode: Boolean,
+    compact: Boolean,
+    onRefreshOrSignOut: () -> Unit,
+    onSkipOrContinue: () -> Unit
+) {
+    val skipLabel = when {
+        isOnboardingMode && isSignedIn -> stringResource(R.string.auth_qr_continue)
+        !isSignedIn -> stringResource(R.string.auth_qr_continue_without_account)
+        else -> stringResource(R.string.auth_qr_back)
+    }
+    val refreshLabel = when {
+        isSignedIn -> stringResource(R.string.account_sign_out)
+        uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
+        else -> stringResource(R.string.auth_qr_refresh)
+    }
+
+    val buttonColors = ButtonDefaults.colors(
+        containerColor = NuvioTheme.colors.BackgroundCard,
+        focusedContainerColor = Color.White,
+        contentColor = NuvioTheme.colors.TextPrimary,
+        focusedContentColor = Color.Black,
+        disabledContainerColor = NuvioTheme.colors.BackgroundCard.copy(alpha = 0.55f)
+    )
+    val primaryColors = ButtonDefaults.colors(
+        containerColor = NuvioTheme.colors.Secondary,
+        focusedContainerColor = NuvioTheme.colors.SecondaryVariant,
+        contentColor = NuvioTheme.colors.OnSecondary,
+        focusedContentColor = NuvioTheme.colors.OnSecondaryVariant
+    )
+
+    if (compact) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
+        ) {
+            Button(
+                onClick = onSkipOrContinue,
+                modifier = Modifier.fillMaxWidth(),
+                colors = primaryColors
+            ) {
+                Text(skipLabel)
+            }
+            Button(
+                onClick = onRefreshOrSignOut,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading,
+                colors = buttonColors
+            ) {
+                Text(refreshLabel)
+            }
+        }
+    } else {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = onRefreshOrSignOut,
+                enabled = !uiState.isLoading,
+                colors = buttonColors
+            ) {
+                Text(refreshLabel)
+            }
+            Button(
+                onClick = onSkipOrContinue,
+                colors = buttonColors
+            ) {
+                Text(skipLabel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AuthQrSignInCompactContent(
+    uiState: AccountUiState,
+    fullAccount: AuthState.FullAccount?,
+    isSignedIn: Boolean,
+    isOnboardingMode: Boolean,
+    remainingMillis: Long,
+    onSwitchBackend: () -> Unit,
+    onRefreshOrSignOut: () -> Unit,
+    onSkipOrContinue: () -> Unit
+) {
+    Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = NuvioTheme.spacing.lg, vertical = NuvioTheme.spacing.xl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = NuvioTheme.spacing.xxxl, vertical = 28.dp),
-            horizontalArrangement = Arrangement.spacedBy(36.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(0.45f)
-                    .fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo_wordmark),
-                    contentDescription = stringResource(R.string.cd_nuvio),
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .height(60.dp),
-                    contentScale = ContentScale.Fit
+            AuthQrSignInHeader(
+                isSignedIn = isSignedIn,
+                fullAccount = fullAccount,
+                uiState = uiState,
+                onSwitchBackend = onSwitchBackend
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    NuvioTheme.spacing.hairline,
+                    NuvioTheme.colors.Border.copy(alpha = 0.5f),
+                    RoundedCornerShape(18.dp)
                 )
-                Spacer(modifier = Modifier.height(22.dp))
-                Text(
-                    text = stringResource(R.string.auth_qr_title),
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = NuvioTheme.colors.TextPrimary,
-                    textAlign = TextAlign.Center
+                .background(
+                    NuvioTheme.colors.BackgroundElevated.copy(alpha = 0.35f),
+                    RoundedCornerShape(18.dp)
                 )
-                Spacer(modifier = Modifier.height(NuvioTheme.spacing.md))
-                Text(
-                    text = if (isSignedIn) {
-                        stringResource(R.string.auth_qr_connected)
-                    } else {
-                        stringResource(R.string.auth_qr_phone_hint)
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = NuvioTheme.colors.TextSecondary,
-                    textAlign = TextAlign.Center
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
+        ) {
+            AuthQrSignInQrPanel(
+                uiState = uiState,
+                isSignedIn = isSignedIn,
+                isOnboardingMode = isOnboardingMode,
+                remainingMillis = remainingMillis
+            )
+        }
+        AuthQrSignInActions(
+            uiState = uiState,
+            isSignedIn = isSignedIn,
+            isOnboardingMode = isOnboardingMode,
+            compact = true,
+            onRefreshOrSignOut = onRefreshOrSignOut,
+            onSkipOrContinue = onSkipOrContinue
+        )
+    }
+}
+
+@Composable
+private fun AuthQrSignInWideContent(
+    uiState: AccountUiState,
+    fullAccount: AuthState.FullAccount?,
+    isSignedIn: Boolean,
+    isOnboardingMode: Boolean,
+    remainingMillis: Long,
+    onSwitchBackend: () -> Unit,
+    onRefreshOrSignOut: () -> Unit,
+    onSkipOrContinue: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = NuvioTheme.spacing.xxxl, vertical = 28.dp),
+        horizontalArrangement = Arrangement.spacedBy(36.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(0.45f)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            AuthQrSignInHeader(
+                isSignedIn = isSignedIn,
+                fullAccount = fullAccount,
+                uiState = uiState,
+                onSwitchBackend = onSwitchBackend
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(0.55f)
+                .fillMaxHeight()
+                .border(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+                .background(
+                    NuvioTheme.colors.BackgroundElevated.copy(alpha = 0.35f),
+                    RoundedCornerShape(18.dp)
                 )
-                if (!isSignedIn && uiState.debugBackendSwitchEnabled) {
-                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
-                    DebugSyncBackendSwitchCard(
-                        uiState = uiState,
-                        requireConfirmation = false,
-                        onSwitchBackend = viewModel::switchDebugBackend
-                    )
-                }
-                if (isSignedIn) {
-                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
-                    Text(
-                        text = fullAccount.email,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFF7CFF9B),
-                        textAlign = TextAlign.Center
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = fullAccount.userId,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NuvioTheme.colors.TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
+                .padding(26.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
+        ) {
+            AuthQrSignInQrPanel(
+                uiState = uiState,
+                isSignedIn = isSignedIn,
+                isOnboardingMode = isOnboardingMode,
+                remainingMillis = remainingMillis
+            )
 
-            Column(
-                modifier = Modifier
-                    .weight(0.55f)
-                    .fillMaxHeight()
-                    .border(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
-                    .background(
-                        NuvioTheme.colors.BackgroundElevated.copy(alpha = 0.35f),
-                        RoundedCornerShape(18.dp)
-                    )
-                    .padding(26.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
-            ) {
-                Text(
-                    text = stringResource(R.string.auth_qr_account_login),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = NuvioTheme.colors.TextPrimary
-                )
-                Text(
-                    text = if (isSignedIn) {
-                        stringResource(R.string.auth_qr_synced_data)
-                    } else {
-                        stringResource(R.string.auth_qr_scan_instruction)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = NuvioTheme.colors.TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-
-                if (isSignedIn && !isOnboardingMode) {
-                    AccountConnectedStatsStrip(
-                        stats = uiState.connectedStats,
-                        isLoading = uiState.isStatsLoading
-                    )
-                } else if (isSignedIn && isOnboardingMode) {
-                    StatusPill(
-                        text = stringResource(R.string.auth_qr_finishing),
-                        containerColor = NuvioTheme.colors.BackgroundCard,
-                        contentColor = NuvioTheme.colors.TextSecondary
-                    )
-                } else {
-                    if (uiState.qrLoginBitmap != null) {
-                        Image(
-                            bitmap = uiState.qrLoginBitmap!!.asImageBitmap(),
-                            contentDescription = stringResource(R.string.cd_qr_login),
-                            modifier = Modifier
-                                .size(200.dp)
-                                .background(Color.White, RoundedCornerShape(NuvioTheme.radii.md))
-                                .padding(NuvioTheme.spacing.sm),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(200.dp)
-                                .background(NuvioTheme.colors.BackgroundCard, RoundedCornerShape(NuvioTheme.radii.md)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (uiState.isLoading) stringResource(R.string.auth_qr_generating) else stringResource(R.string.auth_qr_unavailable),
-                                color = NuvioTheme.colors.TextSecondary,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    if (!uiState.qrLoginCode.isNullOrBlank()) {
-                        Text(
-                            text = stringResource(R.string.auth_qr_code_display, uiState.qrLoginCode!!),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = NuvioTheme.colors.TextPrimary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    if (uiState.qrLoginExpiresAtMillis != null) {
-                        Text(
-                            text = stringResource(R.string.auth_qr_expires, formatDuration(remainingMillis)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = NuvioTheme.colors.TextSecondary
-                        )
-                    }
-
-                    val statusText = uiState.error ?: uiState.qrLoginStatus
-                    if (!statusText.isNullOrBlank()) {
-                        StatusPill(
-                            text = statusText,
-                            containerColor = if (uiState.error != null) Color(0x33C62828) else NuvioTheme.colors.BackgroundCard,
-                            contentColor = if (uiState.error != null) Color(0xFFFF6E6E) else NuvioTheme.colors.TextSecondary
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-                Row(horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                    Button(
-                        onClick = {
-                            if (isSignedIn) {
-                                viewModel.signOut()
-                            } else {
-                                viewModel.startQrLogin()
-                            }
-                        },
-                        enabled = !uiState.isLoading,
-                        colors = ButtonDefaults.colors(
-                            containerColor = NuvioTheme.colors.BackgroundCard,
-                            focusedContainerColor = Color.White,
-                            contentColor = NuvioTheme.colors.TextPrimary,
-                            focusedContentColor = Color.Black,
-                            disabledContainerColor = NuvioTheme.colors.BackgroundCard.copy(alpha = 0.55f)
-                        )
-                    ) {
-                        Text(
-                            when {
-                                isSignedIn -> stringResource(R.string.account_sign_out)
-                                uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
-                                else -> stringResource(R.string.auth_qr_refresh)
-                            }
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            if (onContinue != null && !isSignedIn) {
-                                viewModel.signOut()
-                            }
-                            viewModel.clearQrLoginSession()
-                            if (onContinue != null) {
-                                onContinue()
-                            } else {
-                                onBackPress()
-                            }
-                        },
-                        colors = ButtonDefaults.colors(
-                            containerColor = NuvioTheme.colors.BackgroundCard,
-                            focusedContainerColor = Color.White,
-                            contentColor = NuvioTheme.colors.TextPrimary,
-                            focusedContentColor = Color.Black
-                        )
-                    ) {
-                        Text(
-                            if (onContinue != null) {
-                                if (isSignedIn) stringResource(R.string.auth_qr_continue) else stringResource(R.string.auth_qr_continue_without_account)
-                            } else {
-                                stringResource(R.string.auth_qr_back)
-                            }
-                        )
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.weight(1f))
+            AuthQrSignInActions(
+                uiState = uiState,
+                isSignedIn = isSignedIn,
+                isOnboardingMode = isOnboardingMode,
+                compact = false,
+                onRefreshOrSignOut = onRefreshOrSignOut,
+                onSkipOrContinue = onSkipOrContinue
+            )
         }
     }
 }

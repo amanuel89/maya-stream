@@ -91,6 +91,8 @@ val releaseKeyPasswordValue = env("NUVIO_RELEASE_KEY_PASSWORD")
     ?: localProperties.getProperty("NUVIO_RELEASE_KEY_PASSWORD", "815787")
 val releaseStorePasswordValue = env("NUVIO_RELEASE_STORE_PASSWORD")
     ?: localProperties.getProperty("NUVIO_RELEASE_STORE_PASSWORD", "815787")
+val releaseKeystoreFile = releaseStoreFilePath?.let(::file) ?: file("../nuviotv.jks")
+val hasReleaseKeystore = releaseKeystoreFile.isFile
 
 android {
     namespace = "com.nuvio.tv"
@@ -101,7 +103,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1029
-        versionName = "0.7.12-beta"
+        versionName = "0.1-beta"
 
         buildConfigField(
             "String",
@@ -177,14 +179,18 @@ android {
         create("release") {
             keyAlias = releaseKeyAliasValue
             keyPassword = releaseKeyPasswordValue
-            storeFile = releaseStoreFilePath?.let(::file) ?: file("../nuviotv.jks")
+            storeFile = releaseKeystoreFile
             storePassword = releaseStorePasswordValue
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isDebuggable = false
             isMinifyEnabled = false
 
@@ -268,7 +274,7 @@ android {
             isEnable = !buildingAppBundle
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
+            isUniversalApk = false
         }
     }
 
@@ -324,7 +330,7 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val isPlaystore = variant.productFlavors.any { it.second == "playstore" }
-        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.nuviodebug.com")
+        variant.applicationId.set(if (isPlaystore) "com.nuvio.appdebug" else "com.mayastream.tv.debug")
     }
 }
 

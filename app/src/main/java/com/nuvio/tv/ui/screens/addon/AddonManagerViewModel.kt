@@ -188,7 +188,7 @@ class AddonManagerViewModel @Inject constructor(
 
     private fun loadLogoBytes() {
         try {
-            val inputStream = context.resources.openRawResource(R.drawable.app_logo_wordmark)
+            val inputStream = context.resources.openRawResource(R.raw.maya_stream_logo)
             logoBytes = inputStream.use { it.readBytes() }
         } catch (_: Exception) { }
     }

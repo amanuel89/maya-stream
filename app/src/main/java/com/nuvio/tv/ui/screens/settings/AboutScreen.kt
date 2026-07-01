@@ -105,11 +105,22 @@ fun AboutSettingsContent(
                     contentScale = ContentScale.Fit
                 )
 
-                Text(
-                    text = stringResource(R.string.about_made_with_love),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = NuvioTheme.colors.TextSecondary,
-                    textAlign = TextAlign.Center
+                SettingsActionRow(
+                    title = stringResource(R.string.about_made_with_love),
+                    subtitle = stringResource(R.string.about_telegram_subtitle),
+                    trailingIcon = Icons.Default.OpenInNew,
+                    modifier = if (initialFocusRequester != null) {
+                        Modifier.focusRequester(initialFocusRequester)
+                    } else {
+                        Modifier
+                    },
+                    onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://t.me/fami89")
+                        )
+                        context.startActivity(intent)
+                    }
                 )
 
                 Text(
@@ -121,6 +132,7 @@ fun AboutSettingsContent(
 
                 Spacer(modifier = Modifier.height(NuvioTheme.spacing.xxs))
 
+                /*
                 if (AppFeaturePolicy.inAppUpdatesEnabled) {
                     val updateViewModel: UpdateViewModel = hiltViewModel(context as ComponentActivity)
                     SettingsActionRow(
@@ -162,11 +174,17 @@ fun AboutSettingsContent(
                     trailingIcon = Icons.Default.ChevronRight,
                     onClick = onNavigateToSupportersContributors
                 )
+                */
 
                 SettingsActionRow(
                     title = stringResource(R.string.about_licenses_attributions),
                     subtitle = stringResource(R.string.about_licenses_attributions_subtitle),
                     trailingIcon = Icons.Default.ChevronRight,
+                    modifier = if (initialFocusRequester != null) {
+                        Modifier.focusRequester(initialFocusRequester)
+                    } else {
+                        Modifier
+                    },
                     onClick = onNavigateToLicensesAttributions
                 )
             }

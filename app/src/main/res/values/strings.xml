@@ -1,5 +1,16 @@
 <resources>
-    <string name="app_name">Maya Stream</string>
+    <string name="app_name">ማያ Stream</string>
+    <string name="maya_startup_title">Setting up ማያ Stream</string>
+    <string name="maya_startup_initializing">Initializing sources\u2026</string>
+    <string name="maya_startup_configuring">Setting up configurations\u2026</string>
+    <string name="maya_startup_loading_catalog">Preparing your catalog\u2026</string>
+    <string name="first_run_language_title">Choose your language</string>
+    <string name="first_run_language_subtitle">You can change this later in Settings.</string>
+    <string name="first_run_language_continue">Continue</string>
+    <string name="language_english">English</string>
+    <string name="language_amharic">\u12a0\u121b\u122d\u129b</string>
+    <string name="language_oromo">Afaan Oromoo (AI-translated)</string>
+    <string name="play_loading_finding_stream">Finding stream\u2026</string>
     <string name="tv_channel_continue_watching">Continue Watching</string>
     <string name="type_movie">Movie</string>
     <string name="type_movies">Movies</string>
@@ -98,7 +109,7 @@
 
     <string name="home_no_addons">No addons installed. Add one to get started.</string>
     <string name="home_no_catalog_addons">No catalog addons installed. Install a catalog addon to see content.</string>
-    <string name="auth_notice_nuvio_logged_out">You have been signed out of Maya Stream. Please sign in again.</string>
+    <string name="auth_notice_nuvio_logged_out">You have been signed out of ማያ Stream. Please sign in again.</string>
     <string name="auth_notice_trakt_logged_out">You have been signed out of Trakt. Please reconnect.</string>
     <string name="error_generic">An error occurred</string>
 
@@ -311,7 +322,7 @@
     <string name="appearance_subtitle">Choose your color theme, font and language</string>
     <string name="appearance_color_theme">Color Theme</string>
     <string name="appearance_color_theme_subtitle">Pick the accent color used across the app</string>
-    <string name="theme_color_maya_stream">Maya Stream</string>
+    <string name="theme_color_maya_stream">ማያ Stream</string>
     <string name="theme_color_crimson">Crimson</string>
     <string name="theme_color_ocean">Ocean</string>
     <string name="theme_color_violet">Violet</string>
@@ -329,7 +340,8 @@
 
     <string name="about_title">About</string>
     <string name="about_subtitle">App information, updates, and legal links</string>
-    <string name="about_made_with_love">Made with ❤️ by Tapframe and friends</string>
+    <string name="about_made_with_love">Ported with Love by amanuel mesfin</string>
+    <string name="about_telegram_subtitle">@fami89 on Telegram</string>
     <string name="about_version">Version %1$s</string>
     <string name="about_check_updates">Check for updates</string>
     <string name="about_check_updates_subtitle">Download latest release</string>
@@ -340,26 +352,26 @@
     <string name="about_licenses_attributions">Licenses &amp; Attribution</string>
     <string name="about_licenses_attributions_subtitle">Data sources, acknowledgements, and Android licenses</string>
     <string name="licenses_attributions_title">Licenses &amp; Attribution</string>
-    <string name="licenses_attributions_subtitle">Data providers, service credits, and Android playback licenses used by Maya Stream TV.</string>
+    <string name="licenses_attributions_subtitle">Data providers, service credits, and Android playback licenses used by ማያ Stream TV.</string>
     <string name="licenses_attributions_section_app">APP LICENSE</string>
     <string name="licenses_attributions_section_data">DATA &amp; SERVICES</string>
     <string name="licenses_attributions_section_playback">ANDROID PLAYBACK LICENSES</string>
-    <string name="licenses_attributions_nuvio_title">Maya Stream TV</string>
+    <string name="licenses_attributions_nuvio_title">ማያ Stream TV</string>
     <string name="licenses_attributions_nuvio_body">Source code and license terms are available in the project repository. Licensed under the GNU General Public License v3.0.</string>
     <string name="licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
-    <string name="licenses_attributions_tmdb_body">Maya Stream uses the TMDB API for movie and TV metadata, artwork, trailers, cast, production details, collections, and recommendations. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="licenses_attributions_tmdb_body">ማያ Stream uses the TMDB API for movie and TV metadata, artwork, trailers, cast, production details, collections, and recommendations. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="licenses_attributions_trakt_title">Trakt</string>
-    <string name="licenses_attributions_trakt_body">Maya Stream connects to Trakt for account authentication, watched history, progress sync, library data, ratings, lists, and comments. Maya Stream is not affiliated with or endorsed by Trakt.</string>
+    <string name="licenses_attributions_trakt_body">ማያ Stream connects to Trakt for account authentication, watched history, progress sync, library data, ratings, lists, and comments. ማያ Stream is not affiliated with or endorsed by Trakt.</string>
     <string name="licenses_attributions_premiumize_title">Premiumize</string>
-    <string name="licenses_attributions_premiumize_body">Maya Stream connects to Premiumize for account authentication, cloud library access, cache checks, and cloud playback features. Maya Stream is not affiliated with or endorsed by Premiumize.</string>
+    <string name="licenses_attributions_premiumize_body">ማያ Stream connects to Premiumize for account authentication, cloud library access, cache checks, and cloud playback features. ማያ Stream is not affiliated with or endorsed by Premiumize.</string>
     <string name="licenses_attributions_torbox_title">TorBox</string>
-    <string name="licenses_attributions_torbox_body">Maya Stream connects to TorBox for account authentication, cloud library access, cache checks, and cloud playback features. Maya Stream is not affiliated with or endorsed by TorBox.</string>
+    <string name="licenses_attributions_torbox_body">ማያ Stream connects to TorBox for account authentication, cloud library access, cache checks, and cloud playback features. ማያ Stream is not affiliated with or endorsed by TorBox.</string>
     <string name="licenses_attributions_mdblist_title">MDBList</string>
-    <string name="licenses_attributions_mdblist_body">Maya Stream uses MDBList for ratings and external score provider data. Maya Stream is not affiliated with or endorsed by MDBList.</string>
+    <string name="licenses_attributions_mdblist_body">ማያ Stream uses MDBList for ratings and external score provider data. ማያ Stream is not affiliated with or endorsed by MDBList.</string>
     <string name="licenses_attributions_introdb_title">IntroDB</string>
-    <string name="licenses_attributions_introdb_body">Maya Stream uses the IntroDB API for community-provided intro, recap, credits, and preview timestamps used by skip controls. Maya Stream is not affiliated with or endorsed by IntroDB.</string>
+    <string name="licenses_attributions_introdb_body">ማያ Stream uses the IntroDB API for community-provided intro, recap, credits, and preview timestamps used by skip controls. ማያ Stream is not affiliated with or endorsed by IntroDB.</string>
     <string name="licenses_attributions_imdb_title">IMDb Non-Commercial Datasets</string>
-    <string name="licenses_attributions_imdb_body">Maya Stream uses IMDb Non-Commercial Datasets, including title.ratings.tsv.gz, for IMDb ratings and vote counts. Information courtesy of IMDb (https://www.imdb.com). Used with permission. IMDb data is for personal and non-commercial use under IMDb terms.</string>
+    <string name="licenses_attributions_imdb_body">ማያ Stream uses IMDb Non-Commercial Datasets, including title.ratings.tsv.gz, for IMDb ratings and vote counts. Information courtesy of IMDb (https://www.imdb.com). Used with permission. IMDb data is for personal and non-commercial use under IMDb terms.</string>
     <string name="licenses_attributions_exoplayer_title">AndroidX Media3 ExoPlayer 1.8.0</string>
     <string name="licenses_attributions_exoplayer_body">Used as an Android playback engine. Licensed under the Apache License, Version 2.0.</string>
     <string name="licenses_attributions_libmpv_title">libmpv / libmpv-android</string>
@@ -391,7 +403,7 @@
     <string name="settings_advanced_subtitle">Performance, navigation, cache, and diagnostics</string>
     <string name="experience_mode_essential">Essential</string>
     <string name="experience_mode_advanced">Advanced</string>
-    <string name="experience_mode_choose_title">Choose your Maya Stream experience</string>
+    <string name="experience_mode_choose_title">Choose your ማያ Stream experience</string>
     <string name="experience_mode_choose_subtitle">Start simple or unlock every customization. You can switch anytime.</string>
     <string name="experience_mode_essential_card_subtitle">Focused setup, add-ons, playback basics, Trakt, and account settings.</string>
     <string name="experience_mode_advanced_card_subtitle">Full settings, layout controls, catalog order, collections, plug-ins, and diagnostics.</string>
@@ -482,8 +494,8 @@
     <string name="buffer_safe_status">Safe: Within recommended limit for your device.</string>
     <string name="buffer_unsafe_warning">Warning: Exceeds the recommended safe limit (%1$d MB) for your %2$s device. May cause app crashes.</string>
     <string name="buffer_auto_limit_active">Auto-scaled Safe Limit: %d MB</string>
-    <string name="advanced_nuvio_focus_scroll">Maya Stream Focus Scrolling</string>
-    <string name="advanced_nuvio_focus_scroll_subtitle">Use Maya Stream\'s custom global focus scroll animation and positioning.</string>
+    <string name="advanced_nuvio_focus_scroll">ማያ Stream Focus Scrolling</string>
+    <string name="advanced_nuvio_focus_scroll_subtitle">Use ማያ Stream\'s custom global focus scroll animation and positioning.</string>
     <string name="advanced_memory_only_vertical_scroll">Memory-only Vertical Scrolling</string>
     <string name="advanced_memory_only_vertical_scroll_subtitle">Skip disk and network image requests while vertically scrolling home rows.</string>
     <string name="advanced_compose_highlighter">Compose Highlighter</string>
@@ -521,16 +533,16 @@
     <string name="action_close">Close</string>
 
     <string name="supporters_contributors_title">Supporters &amp; Contributors</string>
-    <string name="supporters_contributors_subtitle">The people backing Maya Stream and the contributors building it across TV and mobile.</string>
+    <string name="supporters_contributors_subtitle">The people backing ማያ Stream and the contributors building it across TV and mobile.</string>
     <string name="supporters_contributors_supporters_copy">Supporters and donators help keep the project moving, fund infrastructure, and make room for ambitious features.</string>
-    <string name="supporters_contributors_donate_copy">Maya Stream will stay free and open source. If you want to support the project, you can help cover the time and infrastructure behind it.</string>
+    <string name="supporters_contributors_donate_copy">ማያ Stream will stay free and open source. If you want to support the project, you can help cover the time and infrastructure behind it.</string>
     <string name="supporters_contributors_donation_progress_title">This month’s server &amp; maintenance</string>
     <string name="supporters_contributors_donation_progress_complete">Covered. Additional support now goes to development.</string>
     <string name="supporters_contributors_donation_progress_remaining">After 100%%, additional support goes to development.</string>
     <string name="supporters_contributors_loading_donation_progress">Loading funding progress...</string>
-    <string name="supporters_contributors_donate_button">Donate to Maya Stream</string>
+    <string name="supporters_contributors_donate_button">Donate to ማያ Stream</string>
     <string name="supporters_contributors_qr_title">Scan to donate</string>
-    <string name="supporters_contributors_qr_subtitle">Open the link on your phone and support Maya Stream through Ko-fi.</string>
+    <string name="supporters_contributors_qr_subtitle">Open the link on your phone and support ማያ Stream through Ko-fi.</string>
     <string name="supporters_contributors_qr_hint">Point your camera at the QR code or use the button below.</string>
     <string name="supporters_contributors_back_button">Back to details</string>
     <string name="supporters_tab">Supporters</string>
@@ -544,7 +556,7 @@
     <string name="sponsors_loading">Loading sponsors…</string>
     <string name="sponsors_empty">No sponsors found yet.</string>
     <string name="sponsors_error_title">Couldn’t load sponsors</string>
-    <string name="sponsors_detail_copy">Sponsors help move Maya Stream forward through support across the different parts of development.</string>
+    <string name="sponsors_detail_copy">Sponsors help move ማያ Stream forward through support across the different parts of development.</string>
     <string name="sponsors_channel_unavailable">Sponsor channel unavailable.</string>
     <string name="sponsors_open_channel">Open sponsor channel</string>
     <string name="contributors_loading">Loading GitHub contributors…</string>
@@ -618,8 +630,8 @@
     <string name="playback_player_ask_desc">Choose the player each time</string>
     <string name="playback_player_auto">Auto (Best for Content)</string>
     <string name="playback_player_auto_desc">ExoPlayer for Movies &amp; TV Shows · MPV for Anime</string>
-    <string name="playback_engine_exoplayer_desc">Best compatibility with current Maya Stream features.</string>
-    <string name="playback_engine_mvplayer_desc">Uses libmpv with Maya Stream OSD controls. Experimental.</string>
+    <string name="playback_engine_exoplayer_desc">Best compatibility with current ማያ Stream features.</string>
+    <string name="playback_engine_mvplayer_desc">Uses libmpv with ማያ Stream OSD controls. Experimental.</string>
 
     <string name="video_section">Video</string>
     <string name="audio_trailer_section">Trailer</string>
@@ -978,7 +990,7 @@
     <string name="debrid_disconnect">Disconnect</string>
     <string name="debrid_device_auth_connected">%1$s is connected on this device.</string>
     <string name="debrid_device_auth_starting">Starting secure sign-in...</string>
-    <string name="debrid_device_auth_instructions">Scan the QR and enter this code to approve Maya Stream.</string>
+    <string name="debrid_device_auth_instructions">Scan the QR and enter this code to approve ማያ Stream.</string>
     <string name="debrid_device_auth_code_copied">Code copied.</string>
     <string name="debrid_device_auth_waiting">Waiting for approval...</string>
     <string name="debrid_device_auth_failed">Could not start sign-in.</string>
@@ -1180,7 +1192,7 @@
     <string name="trakt_library_source_trakt">Trakt</string>
     <string name="trakt_library_source_nuvio">Maya Library</string>
     <string name="trakt_library_source_trakt_selected">Trakt library selected</string>
-    <string name="trakt_library_source_nuvio_selected">Maya Stream library selected</string>
+    <string name="trakt_library_source_nuvio_selected">ማያ Stream library selected</string>
     <string name="trakt_setting_on">On</string>
     <string name="trakt_setting_off">Off</string>
     <string name="trakt_watch_progress_trakt_selected">Watch progress source set to Trakt</string>
@@ -1212,7 +1224,7 @@
     <string name="trakt_stat_watched_hours">Watched Hours</string>
     <string name="trakt_disconnect">Disconnect</string>
     <string name="trakt_disconnect_title">Disconnect Trakt?</string>
-    <string name="trakt_disconnect_subtitle">This will disconnect your Trakt account from Maya Stream.</string>
+    <string name="trakt_disconnect_subtitle">This will disconnect your Trakt account from ማያ Stream.</string>
     <string name="trakt_login">Login</string>
     <string name="trakt_retry">Retry</string>
     <string name="trakt_back">Back</string>
@@ -1278,7 +1290,7 @@
     <string name="profile_addons">addons</string>
     <string name="profile_plugins">plugins</string>
     <string name="profile_choose_avatar">Choose Avatar</string>
-    <string name="profile_custom_avatar_web_panel_note">Custom avatar URLs can be configured from the Maya Stream web panel.</string>
+    <string name="profile_custom_avatar_web_panel_note">Custom avatar URLs can be configured from the ማያ Stream web panel.</string>
     <string name="profile_avatar_none_selected">No avatar selected</string>
     <string name="profile_avatar_focus_hint">Focus an avatar to view its name</string>
     <string name="profile_avatar_category_all">All</string>
@@ -1321,7 +1333,7 @@
     <string name="profile_pin_overlay_set_support">This PIN will be required before opening this profile.</string>
     <string name="profile_pin_overlay_confirm_support">Re-enter the same 4 digits to finish setup.</string>
     <string name="profile_pin_overlay_mismatch">PINs did not match. Enter a new PIN again.</string>
-    <string name="profile_pin_overlay_forgot_hint">Forgot PIN? Reset it from your Maya Stream account on Maya Stream website.</string>
+    <string name="profile_pin_overlay_forgot_hint">Forgot PIN? Reset it from your ማያ Stream account on ማያ Stream website.</string>
     <string name="profile_pin_overlay_back_hint">Press back to cancel</string>
 
 
@@ -1398,7 +1410,7 @@
     <string name="stream_type_torrent">Torrent</string>
     <string name="stream_type_youtube">YouTube</string>
     <string name="p2p_consent_title">P2P Streaming</string>
-    <string name="p2p_consent_body">This stream uses peer-to-peer (P2P) technology. By enabling P2P, you acknowledge and agree that:\n\n\u2022 Your IP address will be visible to other peers in the network\n\u2022 You are solely responsible for the content you access\n\u2022 You confirm you have the legal right to stream this content in your jurisdiction\n\u2022 Maya Stream does not host, distribute, or control any P2P content\n\u2022 Maya Stream bears no liability for any legal consequences arising from your use of P2P streaming\n\nYou use this feature entirely at your own risk. P2P can be disabled anytime in Settings.</string>
+    <string name="p2p_consent_body">This stream uses peer-to-peer (P2P) technology. By enabling P2P, you acknowledge and agree that:\n\n\u2022 Your IP address will be visible to other peers in the network\n\u2022 You are solely responsible for the content you access\n\u2022 You confirm you have the legal right to stream this content in your jurisdiction\n\u2022 ማያ Stream does not host, distribute, or control any P2P content\n\u2022 ማያ Stream bears no liability for any legal consequences arising from your use of P2P streaming\n\nYou use this feature entirely at your own risk. P2P can be disabled anytime in Settings.</string>
     <string name="p2p_consent_enable">Enable P2P</string>
     <string name="p2p_consent_cancel">Cancel</string>
     <string name="settings_p2p_title">P2P Streaming</string>
@@ -1684,7 +1696,7 @@
     <string name="library_delete_subtitle">This removes the list and all list items from Trakt.</string>
     <string name="library_delete_confirm">Delete</string>
     <string name="library_source_local">LOCAL</string>
-    <string name="library_source_nuvio">Maya Stream</string>
+    <string name="library_source_nuvio">ማያ Stream</string>
     <string name="library_source_trakt">TRAKT</string>
     <string name="library_source_saved">Saved</string>
     <string name="library_source_cloud">Cloud</string>
@@ -1815,7 +1827,7 @@
     <string name="catalog_addons_title">Browse addons</string>
     <string name="catalog_addons_subtitle">Optional Stremio-compatible addons from your GitHub catalog. Install only what you need.</string>
     <string name="plugin_resync_github_title">Resync sources from GitHub</string>
-    <string name="plugin_resync_github_subtitle">Check the Maya Stream catalog for new provider repositories and install any that are missing.</string>
+    <string name="plugin_resync_github_subtitle">Check the ማያ Stream catalog for new provider repositories and install any that are missing.</string>
     <string name="plugin_resync_github_button">Resync from GitHub</string>
     <string name="plugin_resync_success">GitHub sync complete. Added %1$d repositories, skipped %2$d already installed.</string>
     <string name="plugin_resync_partial_failure">GitHub sync finished with %1$d repository failures.</string>
@@ -1877,7 +1889,7 @@
     <string name="catalog_see_all_empty_title">No items available</string>
     <string name="catalog_see_all_empty_subtitle">Try a different catalog or check back later</string>
 
-    <string name="layout_selection_welcome">Welcome to Maya Stream</string>
+    <string name="layout_selection_welcome">Welcome to ማያ Stream</string>
     <string name="layout_selection_subtitle">Choose your home screen layout</string>
     <string name="layout_selection_continue">Continue</string>
 
@@ -2055,7 +2067,7 @@
     <string name="cd_preview">Preview</string>
     <string name="cd_test">Test</string>
     <string name="cd_unlink">Unlink</string>
-    <string name="cd_nuvio_logo">Maya Stream</string>
+    <string name="cd_nuvio_logo">ማያ Stream</string>
     <string name="cd_trakt_logo">Trakt Logo</string>
     <string name="cd_trakt_qr">Trakt activation QR</string>
     <string name="cd_imdb">IMDb</string>
@@ -2066,7 +2078,7 @@
     <string name="cd_expand">Expand %1$s</string>
     <string name="cd_collapse">Collapse %1$s</string>
     <string name="cd_qr_login">QR login code</string>
-    <string name="cd_nuvio">Maya Stream</string>
+    <string name="cd_nuvio">ማያ Stream</string>
 
     <string name="debug_signin_success">Signed in successfully</string>
     <string name="debug_generate_description">Debug-generated %1$s item #%2$d</string>
@@ -2208,7 +2220,7 @@
     <string name="collections_editor_tmdb_list_helper">Example: https://www.themoviedb.org/list/8504994 or 8504994.</string>
     <string name="collections_editor_tmdb_person_id">Person ID</string>
     <string name="collections_editor_tmdb_person_helper">Example: https://www.themoviedb.org/person/31-tom-hanks or 31.</string>
-    <string name="collections_editor_tmdb_title_helper">Shown as the row/tab name. If blank, Maya Stream creates one from the source.</string>
+    <string name="collections_editor_tmdb_title_helper">Shown as the row/tab name. If blank, ማያ Stream creates one from the source.</string>
     <string name="collections_editor_tmdb_quick_genres">Quick genres</string>
     <string name="collections_editor_tmdb_quick_languages">Quick languages</string>
     <string name="collections_editor_tmdb_quick_countries">Quick countries</string>
@@ -2381,7 +2393,7 @@
     <string name="autoplay_regex_preset_no_remux_hdr">No REMUX/HDR</string>
 
     <!-- Playback settings sections -->
-    <string name="playback_player_internal_desc">Use Maya Stream\'s built-in player</string>
+    <string name="playback_player_internal_desc">Use ማያ Stream\'s built-in player</string>
 
     <!-- Player runtime: torrent overlay + tracks -->
     <string name="player_torrent_peer_info">%1$d seeds · %2$d peers</string>
@@ -2495,7 +2507,6 @@
     <string name="web_error_invalid_request_body">Invalid request body</string>
 
     <!-- Subtitle preferred language fallback -->
-    <string name="language_english">English</string>
 
     <!-- Supporters / contributors / sponsors errors -->
     <string name="supporters_error_load">Unable to load supporters.</string>

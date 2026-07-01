@@ -1623,11 +1623,7 @@ private fun MetaDetailsContent(
                         nextEpisode = nextEpisode,
                         nextToWatch = nextToWatch,
                         onPlayClick = heroPlayClick,
-                        onPlayLongPress = if (showManualPlayOption || nextToWatch?.isResume == true) {
-                            { showHeroPlayOptionsDialog = true }
-                        } else {
-                            null
-                        },
+                        onPlayLongPress = { heroPlayManualClick() },
                         isInLibrary = isInLibrary,
                         onToggleLibrary = onToggleLibrary,
                         onLibraryLongPress = onLibraryLongPress,

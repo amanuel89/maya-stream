@@ -345,7 +345,9 @@ fun EpisodesRow(
             val isMarkedWatched = remember(seasonEp, watchedEpisodes) { seasonEp?.let { watchedEpisodes.contains(it) } ?: false }
             val episodeFocusRequester = remember(episode.id) { episodeFocusRequesters.getOrPut(episode.id) { FocusRequester() } }
             val episodeOnClick = remember(episode.id) { { onEpisodeClick(episode) } }
-            val episodeOnLongPress = remember(episode.id) { { optionsEpisode = episode } }
+            val episodeOnLongPress = remember(episode.id, onEpisodeManualPlayClick) {
+                { onEpisodeManualPlayClick(episode) }
+            }
             val episodeOnFocused = remember(episode.id) { {
                 onEpisodeFocused(episode.id)
             } }

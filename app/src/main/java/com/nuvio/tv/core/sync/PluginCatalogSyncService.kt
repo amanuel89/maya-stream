@@ -63,10 +63,13 @@ class PluginCatalogSyncService @Inject constructor(
         val previousHash = catalogPreferences.getCatalogHash()
         val catalogChanged = previousHash != null && previousHash != catalogHash
         val installedRepos = pluginManager.repositories.first()
-        val hasInstalledRepos = installedRepos.isNotEmpty()
+        val installedUrls = installedRepos
+            .map { normalizeRepoUrl(it.url) }
+            .toMutableSet()
+        val missingUrls = urls.filter { normalizeRepoUrl(it) !in installedUrls }
 
-        if (!force && hasInstalledRepos && previousHash == catalogHash) {
-            Log.d(TAG, "Plugin catalog unchanged, skipping sync")
+        if (!force && missingUrls.isEmpty() && previousHash == catalogHash) {
+            Log.d(TAG, "Plugin catalog unchanged and all sources installed, skipping sync")
             return PluginCatalogSyncResult(
                 addedCount = 0,
                 skippedCount = urls.size,
@@ -75,7 +78,7 @@ class PluginCatalogSyncService @Inject constructor(
             )
         }
 
-        if (!force && !hasInstalledRepos && urls.isEmpty()) {
+        if (!force && installedRepos.isEmpty() && urls.isEmpty()) {
             return PluginCatalogSyncResult(
                 addedCount = 0,
                 skippedCount = 0,
@@ -84,10 +87,6 @@ class PluginCatalogSyncService @Inject constructor(
                 errorMessage = "Plugin source catalog is empty"
             )
         }
-
-        val installedUrls = installedRepos
-            .map { normalizeRepoUrl(it.url) }
-            .toMutableSet()
 
         var added = 0
         var skipped = 0
@@ -103,13 +102,20 @@ class PluginCatalogSyncService @Inject constructor(
             if (result.isSuccess) {
                 added++
                 installedUrls.add(normalized)
+                pluginManager.toggleAllScrapersForRepo(result.getOrThrow().id, enabled = true)
             } else {
                 failed++
                 Log.w(TAG, "Failed to add repository $url: ${result.exceptionOrNull()?.message}")
             }
         }
 
-        catalogPreferences.saveSyncState(catalogHash = catalogHash, catalogBody = catalogBody)
+        if (added > 0 || installedUrls.isNotEmpty()) {
+            pluginManager.setPluginsEnabled(true)
+        }
+
+        if (failed == 0 || added > 0) {
+            catalogPreferences.saveSyncState(catalogHash = catalogHash, catalogBody = catalogBody)
+        }
 
         Log.d(
             TAG,
