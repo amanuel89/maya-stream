@@ -196,7 +196,7 @@ fun StreamScreen(
             return
         }
         if (playbackInfo.isTorrent && !p2pEnabled) {
-            viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+            viewModel.retryAutoPlayWithoutTorrents()
             return
         }
         val preference = playerPreference ?: return
@@ -242,8 +242,12 @@ fun StreamScreen(
         onBackPress()
     }
 
-    LaunchedEffect(uiState.autoPlayStream) {
+    LaunchedEffect(uiState.autoPlayStream, p2pEnabled) {
         val stream = uiState.autoPlayStream ?: return@LaunchedEffect
+        if (stream.isTorrent() && !p2pEnabled) {
+            viewModel.retryAutoPlayWithoutTorrents()
+            return@LaunchedEffect
+        }
         // User aborted the auto-next chain that navigated here — don't auto-launch; show the list.
         if (viewModel.isAutoNextContinuationAborted()) {
             viewModel.consumeAbortedAutoNextContinuation()
@@ -287,7 +291,7 @@ fun StreamScreen(
         }
         if (playbackInfo.url != null || (playbackInfo.isTorrent && playbackInfo.infoHash != null)) {
             if (playbackInfo.isTorrent && !p2pEnabled) {
-                viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+                viewModel.retryAutoPlayWithoutTorrents()
                 return@LaunchedEffect
             }
             // Respect player preference for cached links too

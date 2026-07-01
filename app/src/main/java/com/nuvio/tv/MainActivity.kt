@@ -774,6 +774,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    /*
                     if (AppFeaturePolicy.inAppUpdatesEnabled && !BuildConfig.IS_DEBUG_BUILD) {
                         val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
                         val updateState by updateViewModel.uiState.collectAsState()
@@ -786,6 +787,7 @@ class MainActivity : ComponentActivity() {
                             onOpenUnknownSources = { updateViewModel.openUnknownSourcesSettings() }
                         )
                     }
+                    */
 
                     // Loader shown while an external episode auto-advances. Drawn last (on top
                     // of the NavHost) to hide the app cold-starting while the next source resolves.

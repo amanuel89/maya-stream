@@ -170,6 +170,63 @@ class StreamScreenViewModel @Inject constructor(
 
     fun enableP2p() = torrentSettings.setP2pEnabled(true)
 
+    fun retryAutoPlayWithoutTorrents() {
+        if (autoPlayHandledForSession || manualSelection) return
+        viewModelScope.launch {
+            val playerSettings = playerSettingsDataStore.playerSettings.first()
+            val installedAddonOrder = addonRepository.getInstalledAddons().first()
+                .enabledAddons()
+                .map { it.displayName }
+            val nonTorrentStreams = _uiState.value.allStreams.filterNot { it.isTorrent() }
+            if (nonTorrentStreams.isEmpty()) {
+                if (_uiState.value.isLoading) {
+                    updateUiStateIfChanged { it.copy(autoPlayStream = null, autoPlayPlaybackInfo = null) }
+                    return@launch
+                }
+                revealManualStreamPicker()
+                return@launch
+            }
+            val pick = if (directAutoPlayFlowEnabledForSession) {
+                FastStreamSelector.selectQuickPlayStream(
+                    streams = nonTorrentStreams,
+                    installedAddonNames = installedAddonOrder.toSet(),
+                    allowTorrents = false
+                )
+            } else {
+                StreamAutoPlaySelector.selectAutoPlayStream(
+                    streams = nonTorrentStreams,
+                    mode = playerSettings.streamAutoPlayMode,
+                    regexPattern = playerSettings.streamAutoPlayRegex,
+                    source = playerSettings.streamAutoPlaySource,
+                    installedAddonNames = installedAddonOrder.toSet(),
+                    selectedAddons = playerSettings.streamAutoPlaySelectedAddons,
+                    selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
+                    allowTorrents = false
+                )
+            }
+            if (pick != null) {
+                updateUiStateIfChanged { it.copy(autoPlayStream = pick) }
+            } else {
+                revealManualStreamPicker()
+            }
+        }
+    }
+
+    private fun revealManualStreamPicker() {
+        autoPlayHandledForSession = true
+        directAutoPlayFlowEnabledForSession = false
+        updateUiStateIfChanged {
+            it.copy(
+                autoPlayStream = null,
+                autoPlayPlaybackInfo = null,
+                isDirectAutoPlayFlow = false,
+                showDirectAutoPlayOverlay = false,
+                directAutoPlayMessage = null,
+                autoPlayDecided = true
+            )
+        }
+    }
+
     private inline fun updateUiStateIfChanged(
         transform: (StreamScreenUiState) -> StreamScreenUiState
     ) {
@@ -462,7 +519,8 @@ class StreamScreenViewModel @Inject constructor(
                         selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
                         preferredBingeGroup = persistedBingeGroup,
                         preferBingeGroupInSelection = true,
-                        bingeGroupOnly = true
+                        bingeGroupOnly = true,
+                        allowTorrents = allowTorrents
                     )?.let { return it }
                 }
                 return FastStreamSelector.selectQuickPlayStream(
@@ -540,7 +598,8 @@ class StreamScreenViewModel @Inject constructor(
                         selectedAddons = playerSettings.streamAutoPlaySelectedAddons,
                         selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
                         preferredBingeGroup = persistedBingeGroup,
-                        preferBingeGroupInSelection = persistedBingeGroup != null
+                        preferBingeGroupInSelection = persistedBingeGroup != null,
+                        allowTorrents = allowTorrents
                     )
                 }
                 if (selectedAutoPlayStream != null) {
@@ -679,7 +738,8 @@ class StreamScreenViewModel @Inject constructor(
                     type = contentType,
                     videoId = videoId,
                     season = season,
-                    episode = episode
+                    episode = episode,
+                    contentId = contentId
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {
@@ -739,7 +799,8 @@ class StreamScreenViewModel @Inject constructor(
                                     selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
                                     preferredBingeGroup = persistedBingeGroup,
                                     preferBingeGroupInSelection = true,
-                                    bingeGroupOnly = true
+                                    bingeGroupOnly = true,
+                                    allowTorrents = allowTorrents
                                 )
                                 if (earlyMatch != null) {
                                     resolvedAutoPlayTarget = true

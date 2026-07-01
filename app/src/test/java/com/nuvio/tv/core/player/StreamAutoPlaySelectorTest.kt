@@ -266,6 +266,34 @@ class StreamAutoPlaySelectorTest {
         assertEquals(listOf(regular, cachedDebrid), ordered)
     }
 
+    @Test
+    fun `first stream mode skips torrents when allowTorrents is false`() {
+        val torrent = stream(
+            addonName = "Torrentio",
+            url = null,
+            name = "1080p",
+            infoHash = "abc123"
+        )
+        val direct = stream(
+            addonName = "AddonA",
+            url = "https://example.com/direct.m3u8",
+            name = "720p"
+        )
+
+        val selected = StreamAutoPlaySelector.selectAutoPlayStream(
+            streams = listOf(torrent, direct),
+            mode = StreamAutoPlayMode.FIRST_STREAM,
+            regexPattern = "",
+            source = StreamAutoPlaySource.ALL_SOURCES,
+            installedAddonNames = setOf("Torrentio", "AddonA"),
+            selectedAddons = emptySet(),
+            selectedPlugins = emptySet(),
+            allowTorrents = false
+        )
+
+        assertEquals(direct, selected)
+    }
+
     private fun stream(
         addonName: String,
         url: String? = null,

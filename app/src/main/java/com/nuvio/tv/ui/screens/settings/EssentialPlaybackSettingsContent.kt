@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.tv.R
+import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.data.local.AudioLanguageOption
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import kotlinx.coroutines.launch
@@ -59,24 +60,19 @@ fun EssentialPlaybackSettingsContent(
             }
             item(key = "playback_basics") {
                 SettingsGroupCard(modifier = Modifier.fillMaxWidth(), title = stringResource(R.string.essential_playback_basics)) {
-                    SettingsActionRow(
-                        title = stringResource(R.string.essential_stream_selection),
-                        subtitle = stringResource(R.string.essential_stream_selection_subtitle),
-                        value = when (settings?.streamAutoPlayMode) {
-                            StreamAutoPlayMode.FIRST_STREAM -> stringResource(R.string.stream_auto_play_first_stream)
-                            StreamAutoPlayMode.MANUAL -> stringResource(R.string.stream_auto_play_manual_short)
-                            StreamAutoPlayMode.REGEX_MATCH -> stringResource(R.string.stream_auto_play_smart_match)
-                            null -> ""
-                        },
-                        trailingIcon = Icons.Default.PlayArrow,
-                        onClick = {
-                            val current = settings?.streamAutoPlayMode ?: StreamAutoPlayMode.MANUAL
-                            val next = if (current == StreamAutoPlayMode.MANUAL) {
-                                StreamAutoPlayMode.FIRST_STREAM
-                            } else {
-                                StreamAutoPlayMode.MANUAL
+                    SettingsToggleRow(
+                        title = stringResource(R.string.autoplay_enable_title),
+                        subtitle = stringResource(R.string.autoplay_enable_sub),
+                        checked = settings?.let { StreamAutoPlayPolicy.isAutoplaySelectionEnabled(it) } == true,
+                        onToggle = {
+                            val current = settings ?: return@SettingsToggleRow
+                            coroutineScope.launch {
+                                if (StreamAutoPlayPolicy.isAutoplaySelectionEnabled(current)) {
+                                    viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.MANUAL)
+                                } else {
+                                    viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.FIRST_STREAM)
+                                }
                             }
-                            coroutineScope.launch { viewModel.setStreamAutoPlayMode(next) }
                         },
                         enabled = settings != null,
                         modifier = if (initialFocusRequester != null) {
@@ -85,6 +81,28 @@ fun EssentialPlaybackSettingsContent(
                             Modifier
                         }
                     )
+                    settings?.takeIf { StreamAutoPlayPolicy.isAutoplaySelectionEnabled(it) }?.let { currentSettings ->
+                        SettingsActionRow(
+                            title = stringResource(R.string.essential_stream_selection),
+                            subtitle = stringResource(R.string.essential_stream_selection_subtitle),
+                            value = when (currentSettings.streamAutoPlayMode) {
+                                StreamAutoPlayMode.FIRST_STREAM -> stringResource(R.string.stream_auto_play_first_stream)
+                                StreamAutoPlayMode.MANUAL -> stringResource(R.string.stream_auto_play_manual_short)
+                                StreamAutoPlayMode.REGEX_MATCH -> stringResource(R.string.stream_auto_play_smart_match)
+                            },
+                            trailingIcon = Icons.Default.PlayArrow,
+                            onClick = {
+                                val current = currentSettings.streamAutoPlayMode
+                                val next = when (current) {
+                                    StreamAutoPlayMode.FIRST_STREAM -> StreamAutoPlayMode.REGEX_MATCH
+                                    StreamAutoPlayMode.REGEX_MATCH -> StreamAutoPlayMode.FIRST_STREAM
+                                    StreamAutoPlayMode.MANUAL -> StreamAutoPlayMode.FIRST_STREAM
+                                }
+                                coroutineScope.launch { viewModel.setStreamAutoPlayMode(next) }
+                            },
+                            enabled = true
+                        )
+                    }
                     SettingsToggleRow(
                         title = stringResource(R.string.essential_autoplay_next_episode),
                         subtitle = stringResource(R.string.essential_autoplay_next_episode_subtitle),

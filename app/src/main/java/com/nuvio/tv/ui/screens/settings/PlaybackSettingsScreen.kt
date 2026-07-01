@@ -80,7 +80,9 @@ import com.nuvio.tv.data.local.AudioLanguageOption
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.PlayerPreference
 import com.nuvio.tv.data.local.Dv7HandlingMode
+import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.data.local.PlayerSettings
+import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.displayName
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.detail.requestFocusAfterFrames
@@ -184,7 +186,7 @@ fun PlaybackSettingsContent(
 
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.settings.gap)
     ) {
         SettingsDetailHeader(
             title = stringResource(R.string.playback_title),
@@ -192,9 +194,41 @@ fun PlaybackSettingsContent(
         )
 
         SettingsGroupCard(
+            modifier = Modifier.fillMaxWidth(),
+            title = stringResource(R.string.playback_section_player)
+        ) {
+            SettingsToggleRow(
+                title = stringResource(R.string.autoplay_enable_title),
+                subtitle = stringResource(R.string.autoplay_enable_sub),
+                checked = StreamAutoPlayPolicy.isAutoplaySelectionEnabled(playerSettings),
+                onToggle = {
+                    coroutineScope.launch {
+                        if (StreamAutoPlayPolicy.isAutoplaySelectionEnabled(playerSettings)) {
+                            viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.MANUAL)
+                        } else {
+                            viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.FIRST_STREAM)
+                        }
+                    }
+                },
+                modifier = if (initialFocusRequester != null) {
+                    Modifier.focusRequester(initialFocusRequester)
+                } else {
+                    Modifier
+                }
+            )
+            SettingsToggleRow(
+                title = stringResource(R.string.essential_p2p_streams),
+                subtitle = stringResource(R.string.essential_p2p_streams_subtitle),
+                checked = torrentSettings.p2pEnabled,
+                onToggle = { viewModel.setP2pEnabled(!torrentSettings.p2pEnabled) }
+            )
+        }
+
+        SettingsGroupCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .padding(top = NuvioTheme.spacing.lg)
         ) {
             PlaybackSettingsSections(
                 initialFocusRequester = initialFocusRequester,

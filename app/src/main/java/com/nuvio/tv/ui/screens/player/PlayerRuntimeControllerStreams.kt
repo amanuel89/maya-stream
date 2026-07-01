@@ -217,7 +217,8 @@ internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
             type = type,
             videoId = vid,
             season = seasonArg,
-            episode = episodeArg
+            episode = episodeArg,
+            contentId = contentId
         ).collect { result ->
             when (result) {
                 is NetworkResult.Success -> {
@@ -1023,7 +1024,8 @@ internal fun PlayerRuntimeController.loadStreamsForEpisode(video: Video, forceRe
             type = type,
             videoId = video.id,
             season = video.season,
-            episode = video.episode
+            episode = video.episode,
+            contentId = contentId
         ).collect { result ->
             when (result) {
                 is NetworkResult.Success -> {
@@ -1527,6 +1529,7 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
     nextEpisodeAutoPlayJob = scope.launch {
         try {
             val playerSettings = playerSettingsDataStore.playerSettings.first()
+            val allowTorrents = torrentSettings.settings.first().p2pEnabled
             val shouldAutoSelectInManualMode =
                 playerSettings.streamAutoPlayMode == StreamAutoPlayMode.MANUAL &&
                     (
@@ -1601,7 +1604,8 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                         null
                     },
                     preferBingeGroupInSelection = playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode,
-                    bingeGroupOnly = bingeGroupOnlyManualMode
+                    bingeGroupOnly = bingeGroupOnlyManualMode,
+                    allowTorrents = allowTorrents
                 )
             }
 
@@ -1619,7 +1623,8 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                     selectedPlugins = effectiveSelectedPlugins,
                     preferredBingeGroup = currentStreamBingeGroup,
                     preferBingeGroupInSelection = true,
-                    bingeGroupOnly = true
+                    bingeGroupOnly = true,
+                    allowTorrents = allowTorrents
                 )
             }
 
@@ -1636,7 +1641,8 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                     type = type,
                     videoId = nextVideo.id,
                     season = nextVideo.season,
-                    episode = nextVideo.episode
+                    episode = nextVideo.episode,
+                    contentId = contentId
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {

@@ -758,6 +758,8 @@
     <string name="sub_startup_mode_preferred_desc">Prefetch addon subtitles before playback and attach preferred/secondary language tracks.</string>
     <string name="sub_startup_mode_all_desc">Prefetch and attach all addon subtitles before playback. Slowest startup.</string>
 
+    <string name="autoplay_enable_title">Enable autoplay</string>
+    <string name="autoplay_enable_sub">Play automatically without showing the source list. Torrent sources are skipped when P2P is off.</string>
     <string name="autoplay_reuse_last_link">Reuse Last Link</string>
     <string name="autoplay_reuse_last_link_sub">Auto-play your last working stream for this same movie/episode when cache is still valid</string>
     <string name="autoplay_last_link_cache">Last Link Cache Duration</string>

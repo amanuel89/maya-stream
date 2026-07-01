@@ -30,7 +30,8 @@ object StreamAutoPlaySelector {
         return directDebridEntries + orderedAddons + pluginEntries
     }
 
-    private fun isPlayable(stream: Stream): Boolean {
+    private fun isPlayable(stream: Stream, allowTorrents: Boolean = true): Boolean {
+        if (!allowTorrents && stream.isTorrent()) return false
         // External URL streams (e.g. error pages, web links) are not playable.
         if (stream.isExternal()) return false
         when (stream.debridCacheStatus?.state) {
@@ -55,7 +56,8 @@ object StreamAutoPlaySelector {
         selectedPlugins: Set<String>,
         preferredBingeGroup: String? = null,
         preferBingeGroupInSelection: Boolean = false,
-        bingeGroupOnly: Boolean = false
+        bingeGroupOnly: Boolean = false,
+        allowTorrents: Boolean = true
     ): Stream? {
         if (streams.isEmpty()) return null
 
@@ -85,7 +87,7 @@ object StreamAutoPlaySelector {
         val targetBingeGroup = preferredBingeGroup?.trim().orEmpty()
         if (preferBingeGroupInSelection && targetBingeGroup.isNotEmpty()) {
             val bingeGroupMatch = candidateStreams.firstOrNull { stream ->
-                stream.behaviorHints?.bingeGroup == targetBingeGroup && isPlayable(stream)
+                stream.behaviorHints?.bingeGroup == targetBingeGroup && isPlayable(stream, allowTorrents)
             }
             if (bingeGroupMatch != null) return bingeGroupMatch
             // When bingeGroupOnly is set (MANUAL mode with only binge-group
@@ -98,7 +100,7 @@ object StreamAutoPlaySelector {
 
         return when (mode) {
             StreamAutoPlayMode.MANUAL -> null
-            StreamAutoPlayMode.FIRST_STREAM -> candidateStreams.firstOrNull { isPlayable(it) }
+            StreamAutoPlayMode.FIRST_STREAM -> candidateStreams.firstOrNull { isPlayable(it, allowTorrents) }
             StreamAutoPlayMode.REGEX_MATCH -> {
                 val pattern = regexPattern.trim()
  
@@ -121,7 +123,7 @@ object StreamAutoPlaySelector {
 
                 // 1. Build list of ALL regex‑matching streams
                 val matchingStreams = candidateStreams.filter { stream ->
-                    if (!isPlayable(stream)) return@filter false
+                    if (!isPlayable(stream, allowTorrents)) return@filter false
 
                     val searchableText = buildString {
                         append(stream.addonName).append(' ')
@@ -144,7 +146,7 @@ object StreamAutoPlaySelector {
                 }
 
                 if (matchingStreams.isEmpty()) return null
-                matchingStreams.firstOrNull { isPlayable(it) }
+                matchingStreams.firstOrNull { isPlayable(it, allowTorrents) }
             }
 
         }

@@ -20,6 +20,7 @@ import com.nuvio.tv.domain.model.ScraperInfo
 import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.domain.model.StreamBehaviorHints
 import com.nuvio.tv.domain.model.enabledAddons
+import com.nuvio.tv.data.repository.parseContentIds
 import com.nuvio.tv.domain.repository.AddonRepository
 import com.nuvio.tv.domain.repository.StreamRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +36,10 @@ import java.net.URLEncoder
 import javax.inject.Inject
 
 private const val TAG = "StreamRepositoryImpl"
+private val TMDB_SHARE_URL_REGEX = Regex(
+    pattern = """themoviedb\.org/(?:movie|tv)/(\d+)""",
+    options = setOf(RegexOption.IGNORE_CASE)
+)
 
 class StreamRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -60,7 +65,8 @@ class StreamRepositoryImpl @Inject constructor(
         type: String,
         videoId: String,
         season: Int?,
-        episode: Int?
+        episode: Int?,
+        contentId: String?
     ): Flow<NetworkResult<List<AddonStreams>>> = flow {
         emit(NetworkResult.Loading)
 
@@ -72,10 +78,20 @@ class StreamRepositoryImpl @Inject constructor(
                 addon.supportsStreamResource(type, videoId)
             }
 
-            // Convert IMDB ID to TMDB ID if needed for plugins
-            val tmdbId = tmdbService.ensureTmdbId(videoId, type)
-            Log.d(TAG, "Video ID: $videoId -> TMDB ID: $tmdbId (type: $type)")
+            val tmdbId = resolvePluginTmdbId(
+                videoId = videoId,
+                type = type,
+                contentId = contentId,
+                streamAddons = streamAddons
+            )
+            Log.d(TAG, "Video ID: $videoId contentId: $contentId -> TMDB ID: $tmdbId (type: $type)")
             val pluginRequest = buildPluginRequest(tmdbId, type, videoId)
+            if (pluginRequest == null && pluginManager.pluginsEnabled.first()) {
+                Log.w(
+                    TAG,
+                    "Plugin scrapers skipped: could not resolve TMDB id for videoId=$videoId contentId=$contentId"
+                )
+            }
             val attemptedAddonNames = streamAddons.map { it.displayName }
             val attemptedFailures = java.util.Collections.synchronizedList(
                 mutableListOf<StreamAttemptFailure>()
@@ -219,6 +235,78 @@ class StreamRepositoryImpl @Inject constructor(
         val mediaType: String,
         val source: String
     )
+
+    private suspend fun resolvePluginTmdbId(
+        videoId: String,
+        type: String,
+        contentId: String?,
+        streamAddons: List<Addon>
+    ): String? {
+        val candidates = buildList {
+            add(videoId)
+            contentId?.let { add(it) }
+            add(videoId.substringBefore(':'))
+            contentId?.substringBefore(':')?.let { add(it) }
+        }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        for (candidate in candidates) {
+            parseContentIds(candidate).tmdb?.let { return it.toString() }
+            tmdbService.ensureTmdbId(candidate, type)?.let { return it }
+        }
+
+        val metaLookupId = contentId?.substringBefore(':')?.takeIf { it.isNotBlank() }
+            ?: videoId.substringBefore(':').takeIf { it.isNotBlank() }
+        if (metaLookupId != null) {
+            resolveTmdbIdFromAddonMeta(type, metaLookupId, streamAddons)?.let { return it }
+        }
+        return null
+    }
+
+    private suspend fun resolveTmdbIdFromAddonMeta(
+        type: String,
+        metaId: String,
+        streamAddons: List<Addon>
+    ): String? {
+        for (addon in streamAddons) {
+            val tmdbId = fetchTmdbIdFromAddonMeta(addon, type, metaId) ?: continue
+            Log.d(TAG, "Resolved TMDB id $tmdbId from ${addon.displayName} meta for $metaId")
+            return tmdbId
+        }
+        return null
+    }
+
+    private suspend fun fetchTmdbIdFromAddonMeta(
+        addon: Addon,
+        type: String,
+        metaId: String
+    ): String? {
+        val cleanBaseUrl = addon.baseUrl.trimEnd('/')
+        val queryStart = cleanBaseUrl.indexOf('?')
+        val basePath = if (queryStart >= 0) cleanBaseUrl.substring(0, queryStart).trimEnd('/') else cleanBaseUrl
+        val baseQuery = if (queryStart >= 0) cleanBaseUrl.substring(queryStart) else ""
+        val encodedType = encodePathSegment(type)
+        val encodedMetaId = encodePathSegment(metaId)
+        val metaUrl = "$basePath/meta/$encodedType/$encodedMetaId.json$baseQuery"
+        return try {
+            when (val result = safeApiCall(context) { api.getMeta(metaUrl) }) {
+                is NetworkResult.Success -> {
+                    val links = result.data.meta?.links.orEmpty()
+                    for (link in links) {
+                        val url = link.url ?: continue
+                        TMDB_SHARE_URL_REGEX.find(url)?.groupValues?.getOrNull(1)?.let { return it }
+                    }
+                    null
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            null
+        }
+    }
 
     private fun buildPluginRequest(tmdbId: String?, type: String, videoId: String): PluginRequest? {
         if (tmdbId != null) {
