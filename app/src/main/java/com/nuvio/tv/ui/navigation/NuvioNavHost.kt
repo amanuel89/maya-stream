@@ -543,7 +543,9 @@ fun NuvioNavHost(
                                 infoHash = playbackInfo.infoHash,
                                 fileIdx = playbackInfo.fileIdx,
                                 sources = playbackInfo.sources,
-                                contentLanguage = playbackInfo.contentLanguage
+                                contentLanguage = playbackInfo.contentLanguage,
+                                preResolvedMimeType = playbackInfo.preResolvedMimeType,
+                                responseHeaders = playbackInfo.probeResponseHeaders
                             )
                         )
                     }
@@ -583,7 +585,9 @@ fun NuvioNavHost(
                                 infoHash = playbackInfo.infoHash,
                                 fileIdx = playbackInfo.fileIdx,
                                 sources = playbackInfo.sources,
-                                contentLanguage = playbackInfo.contentLanguage
+                                contentLanguage = playbackInfo.contentLanguage,
+                                preResolvedMimeType = playbackInfo.preResolvedMimeType,
+                                responseHeaders = playbackInfo.probeResponseHeaders
                             )
                         ) {
                             popUpTo(Screen.Stream.route) { inclusive = true }
@@ -724,6 +728,16 @@ fun NuvioNavHost(
                     defaultValue = null
                 },
                 navArgument("launchStartedAtMs") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("preResolvedMimeType") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("responseHeaders") {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null

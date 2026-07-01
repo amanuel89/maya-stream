@@ -425,7 +425,7 @@
     <string name="essential_autoplay_next_episode_subtitle">Continue to the next episode after a stream finishes.</string>
     <string name="external_auto_next_loading">Loading next episode…</string>
     <string name="essential_p2p_streams">P2P streams</string>
-    <string name="essential_p2p_streams_subtitle">Allow peer-to-peer stream sources.</string>
+    <string name="essential_p2p_streams_subtitle">Include torrent links when autoplay selects a stream.</string>
     <string name="essential_subtitle_language_subtitle">Preferred subtitle language.</string>
     <string name="essential_audio_language_subtitle">Preferred audio language.</string>
     <!-- Account / sign-in error messages -->
@@ -759,7 +759,7 @@
     <string name="sub_startup_mode_all_desc">Prefetch and attach all addon subtitles before playback. Slowest startup.</string>
 
     <string name="autoplay_enable_title">Enable autoplay</string>
-    <string name="autoplay_enable_sub">Play automatically without showing the source list. Torrent sources are skipped when P2P is off.</string>
+    <string name="autoplay_enable_sub">Automatically pick and play a stream without showing the source list.</string>
     <string name="autoplay_reuse_last_link">Reuse Last Link</string>
     <string name="autoplay_reuse_last_link_sub">Auto-play your last working stream for this same movie/episode when cache is still valid</string>
     <string name="autoplay_last_link_cache">Last Link Cache Duration</string>
@@ -1416,7 +1416,7 @@
     <string name="p2p_consent_enable">Enable P2P</string>
     <string name="p2p_consent_cancel">Cancel</string>
     <string name="settings_p2p_title">P2P Streaming</string>
-    <string name="settings_p2p_subtitle">Allow peer-to-peer (torrent) streams</string>
+    <string name="settings_p2p_subtitle">Torrent playback display options</string>
     <string name="settings_p2p_hide_stats_title">Hide torrent stats</string>
     <string name="settings_p2p_hide_stats_subtitle">Hide buffer, seeds, peers and download speed during loading and playback</string>
     <string name="p2p_download_title">Downloading P2P Engine</string>

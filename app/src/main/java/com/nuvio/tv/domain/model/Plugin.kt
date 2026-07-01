@@ -1,5 +1,6 @@
 package com.nuvio.tv.domain.model
 
+import com.nuvio.tv.core.debrid.StreamTextSizeParser
 import com.squareup.moshi.JsonClass
 
 /**
@@ -176,6 +177,8 @@ fun LocalScraperResult.toStream(scraper: ScraperInfo): com.nuvio.tv.domain.model
             proxyHeaders = headers?.let { ProxyHeaders(request = it, response = null) }
         ),
         addonName = scraper.name,
-        addonLogo = scraper.logo
+        addonLogo = scraper.logo,
+        seeders = seeders,
+        sizeBytes = StreamTextSizeParser.sizeBytesFromText(size)
     )
 }

@@ -106,14 +106,15 @@ fun PlaybackSettingsScreen(
         title = stringResource(R.string.playback_title),
         subtitle = stringResource(R.string.playback_subtitle)
     ) {
-        PlaybackSettingsContent(viewModel = viewModel)
+        PlaybackSettingsContent(viewModel = viewModel, showPageHeader = false)
     }
 }
 
 @Composable
 fun PlaybackSettingsContent(
     viewModel: PlaybackSettingsViewModel = hiltViewModel(),
-    initialFocusRequester: FocusRequester? = null
+    initialFocusRequester: FocusRequester? = null,
+    showPageHeader: Boolean = true
 ) {
     val playerSettings by viewModel.playerSettings.collectAsStateWithLifecycle(initialValue = PlayerSettings())
     val torrentSettings by viewModel.torrentSettingsFlow.collectAsStateWithLifecycle(
@@ -184,55 +185,11 @@ fun PlaybackSettingsContent(
         showMemoryUsage = false
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.settings.gap)
-    ) {
-        SettingsDetailHeader(
-            title = stringResource(R.string.playback_title),
-            subtitle = stringResource(R.string.playback_subtitle)
-        )
-
-        SettingsGroupCard(
-            modifier = Modifier.fillMaxWidth(),
-            title = stringResource(R.string.playback_section_player)
-        ) {
-            SettingsToggleRow(
-                title = stringResource(R.string.autoplay_enable_title),
-                subtitle = stringResource(R.string.autoplay_enable_sub),
-                checked = StreamAutoPlayPolicy.isAutoplaySelectionEnabled(playerSettings),
-                onToggle = {
-                    coroutineScope.launch {
-                        if (StreamAutoPlayPolicy.isAutoplaySelectionEnabled(playerSettings)) {
-                            viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.MANUAL)
-                        } else {
-                            viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.FIRST_STREAM)
-                        }
-                    }
-                },
-                modifier = if (initialFocusRequester != null) {
-                    Modifier.focusRequester(initialFocusRequester)
-                } else {
-                    Modifier
-                }
-            )
-            SettingsToggleRow(
-                title = stringResource(R.string.essential_p2p_streams),
-                subtitle = stringResource(R.string.essential_p2p_streams_subtitle),
-                checked = torrentSettings.p2pEnabled,
-                onToggle = { viewModel.setP2pEnabled(!torrentSettings.p2pEnabled) }
-            )
-        }
-
-        SettingsGroupCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(top = NuvioTheme.spacing.lg)
-        ) {
-            PlaybackSettingsSections(
-                initialFocusRequester = initialFocusRequester,
-                playerSettings = playerSettings,
+    Box(modifier = Modifier.fillMaxSize()) {
+        PlaybackSettingsSections(
+            showPageHeader = showPageHeader,
+            initialFocusRequester = initialFocusRequester,
+            playerSettings = playerSettings,
                 onShowPlayerPreferenceDialog = { openDialog { showPlayerPreferenceDialog = true } },
                 onShowInternalPlayerEngineDialog = { openDialog { showInternalPlayerEngineDialog = true } },
                 onShowAudioLanguageDialog = { openDialog { showAudioLanguageDialog = true } },
@@ -251,6 +208,9 @@ fun PlaybackSettingsContent(
                 onShowStreamAutoPlayAddonSelectionDialog = { openDialog { showStreamAutoPlayAddonSelectionDialog = true } },
                 onShowStreamAutoPlayPluginSelectionDialog = { openDialog { showStreamAutoPlayPluginSelectionDialog = true } },
                 onShowStreamRegexDialog = { openDialog { showStreamRegexDialog = true } },
+                onSetStreamAutoPlayEnabled = { enabled ->
+                    coroutineScope.launch { viewModel.setStreamAutoPlayEnabled(enabled) }
+                },
                 onShowNextEpisodeThresholdModeDialog = { openDialog { showNextEpisodeThresholdModeDialog = true } },
                 onShowReuseLastLinkCacheDialog = { openDialog { showReuseLastLinkCacheDialog = true } },
                 onSetStreamAutoPlayNextEpisodeEnabled = { enabled ->
@@ -422,10 +382,13 @@ fun PlaybackSettingsContent(
                     coroutineScope.launch { viewModel.setEnableHttp2(enabled) }
                     memoryUsageTrigger++
                 }
-            )
-        }
+        )
 
         AnimatedVisibility(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = NuvioTheme.spacing.md, vertical = NuvioTheme.spacing.sm),
             visible = showMemoryUsage &&
                     (playerSettings.bufferEngineEnabled || playerSettings.parallelNetworkEnabled || playerSettings.nuvioPerformanceModeEnabled),
             enter = fadeIn(),

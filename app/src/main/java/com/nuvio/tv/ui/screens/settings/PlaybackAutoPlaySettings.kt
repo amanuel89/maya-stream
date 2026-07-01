@@ -273,7 +273,7 @@ internal fun LazyListScope.autoPlaySettingsItems(
         }
     }
 
-    if (playerSettings.streamAutoPlayMode != StreamAutoPlayMode.MANUAL) {
+    if (playerSettings.streamAutoPlayEnabled) {
 
         item(key = "autoplay_source_scope") {
             val sourceLabel = when (effectiveAutoPlaySource) {
@@ -517,15 +517,20 @@ private fun StreamAutoPlayModeDialog(
     onDismiss: () -> Unit
 ) {
     val options = listOf(
-        SettingsPickerOption(StreamAutoPlayMode.MANUAL, stringResource(R.string.autoplay_mode_manual), stringResource(R.string.autoplay_mode_manual_desc)),
         SettingsPickerOption(StreamAutoPlayMode.FIRST_STREAM, stringResource(R.string.autoplay_mode_first), stringResource(R.string.autoplay_mode_first_desc)),
         SettingsPickerOption(StreamAutoPlayMode.REGEX_MATCH, stringResource(R.string.autoplay_mode_regex), stringResource(R.string.autoplay_mode_regex_desc))
     )
 
+    val effectiveSelectedMode = if (selectedMode == StreamAutoPlayMode.MANUAL) {
+        StreamAutoPlayMode.FIRST_STREAM
+    } else {
+        selectedMode
+    }
+
     SettingsSingleChoiceDialog(
         title = stringResource(R.string.autoplay_stream_selection),
         options = options,
-        selectedValue = selectedMode,
+        selectedValue = effectiveSelectedMode,
         onOptionSelected = onModeSelected,
         onDismiss = onDismiss,
         width = 460.dp,

@@ -75,6 +75,7 @@ import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.PlayerPreference
 import com.nuvio.tv.data.local.PlayerSettings
+import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.data.local.VodCacheSizeMode
 import com.nuvio.tv.ui.components.NuvioDialog
 
@@ -108,6 +109,7 @@ private fun frameRateMatchingModeLabel(mode: FrameRateMatchingMode, off: String,
 
 @Composable
 internal fun PlaybackSettingsSections(
+    showPageHeader: Boolean = false,
     initialFocusRequester: FocusRequester? = null,
     playerSettings: PlayerSettings,
     onShowPlayerPreferenceDialog: () -> Unit,
@@ -128,6 +130,7 @@ internal fun PlaybackSettingsSections(
     onShowStreamAutoPlayAddonSelectionDialog: () -> Unit,
     onShowStreamAutoPlayPluginSelectionDialog: () -> Unit,
     onShowStreamRegexDialog: () -> Unit,
+    onSetStreamAutoPlayEnabled: (Boolean) -> Unit,
     onShowNextEpisodeThresholdModeDialog: () -> Unit,
     onShowReuseLastLinkCacheDialog: () -> Unit,
     onSetStreamAutoPlayNextEpisodeEnabled: (Boolean) -> Unit,
@@ -207,6 +210,7 @@ internal fun PlaybackSettingsSections(
     var bufferAndNetworkExpanded by rememberSaveable { mutableStateOf(false) }
 
     val defaultGeneralHeaderFocus = remember { FocusRequester() }
+    val autoplayQuickFocus = initialFocusRequester ?: remember { FocusRequester() }
     val afrHeaderFocus = remember { FocusRequester() }
     val autoSkipHeaderFocus = remember { FocusRequester() }
     val streamHeaderFocus = remember { FocusRequester() }
@@ -214,7 +218,7 @@ internal fun PlaybackSettingsSections(
     val subtitlesHeaderFocus = remember { FocusRequester() }
     val p2pHeaderFocus = remember { FocusRequester() }
     val bufferAndNetworkHeaderFocus = remember { FocusRequester() }
-    val generalHeaderFocus = initialFocusRequester ?: defaultGeneralHeaderFocus
+    val generalHeaderFocus = defaultGeneralHeaderFocus
 
     var focusedSection by remember { mutableStateOf<PlaybackSection?>(null) }
 
@@ -329,6 +333,48 @@ internal fun PlaybackSettingsSections(
         contentPadding = PaddingValues(top = NuvioTheme.spacing.xs, bottom = NuvioTheme.spacing.xxl),
         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
     ) {
+        if (showPageHeader) {
+            item(key = "page_header") {
+                SettingsDetailHeader(
+                    title = stringResource(R.string.playback_title),
+                    subtitle = stringResource(R.string.playback_subtitle)
+                )
+            }
+        }
+
+        item(key = "quick_autoplay") {
+            SettingsGroupCard(
+                modifier = Modifier.fillMaxWidth(),
+                title = stringResource(R.string.autoplay_enable_title)
+            ) {
+                SettingsToggleRow(
+                    title = stringResource(R.string.autoplay_enable_title),
+                    subtitle = stringResource(R.string.autoplay_enable_sub),
+                    checked = StreamAutoPlayPolicy.isAutoplaySelectionEnabled(playerSettings),
+                    onToggle = {
+                        onSetStreamAutoPlayEnabled(
+                            !StreamAutoPlayPolicy.isAutoplaySelectionEnabled(playerSettings)
+                        )
+                    },
+                    modifier = Modifier.focusRequester(autoplayQuickFocus)
+                )
+            }
+        }
+
+        item(key = "quick_p2p") {
+            SettingsGroupCard(
+                modifier = Modifier.fillMaxWidth(),
+                title = stringResource(R.string.essential_p2p_streams)
+            ) {
+                SettingsToggleRow(
+                    title = stringResource(R.string.essential_p2p_streams),
+                    subtitle = stringResource(R.string.essential_p2p_streams_subtitle),
+                    checked = p2pEnabled,
+                    onToggle = { onSetP2pEnabled(!p2pEnabled) }
+                )
+            }
+        }
+
         playbackCollapsibleSection(
             keyPrefix = "general",
             title = strSectionGeneral,
@@ -668,16 +714,6 @@ internal fun PlaybackSettingsSections(
             focusRequester = p2pHeaderFocus,
             onHeaderFocused = { focusedSection = PlaybackSection.P2P }
         ) {
-            item(key = "p2p_enabled") {
-                ToggleSettingsItem(
-                    icon = Icons.Default.Info,
-                    title = strSectionP2p,
-                    subtitle = strSectionP2pDesc,
-                    isChecked = p2pEnabled,
-                    onCheckedChange = onSetP2pEnabled,
-                    onFocused = { focusedSection = PlaybackSection.P2P }
-                )
-            }
             item(key = "p2p_hide_stats") {
                 ToggleSettingsItem(
                     icon = Icons.Default.Info,

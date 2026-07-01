@@ -198,11 +198,14 @@ class PlayerRuntimeController(
             PlayerMediaSourceFactory.sanitizeHeaders(PlayerMediaSourceFactory.parseHeaders(headersJson))
         )
         currentStreamUrl = cleanInitialUrl
-        currentStreamMimeType = PlayerMediaSourceFactory.inferMimeType(
-            url = cleanInitialUrl,
-            filename = currentFilename,
-            responseHeaders = currentStreamResponseHeaders
-        )
+        currentStreamResponseHeaders = PlayerMediaSourceFactory.parseHeaders(navigationArgs.responseHeadersJson)
+            ?: emptyMap()
+        currentStreamMimeType = navigationArgs.preResolvedMimeType
+            ?: PlayerMediaSourceFactory.inferMimeType(
+                url = cleanInitialUrl,
+                filename = currentFilename,
+                responseHeaders = currentStreamResponseHeaders
+            )
         currentHeaders = mergedInitialHeaders
     }
 

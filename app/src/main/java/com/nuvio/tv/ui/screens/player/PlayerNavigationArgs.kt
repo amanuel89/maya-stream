@@ -34,7 +34,9 @@ internal data class PlayerNavigationArgs(
     val contentLanguage: String?,
     val rememberedAudioLanguage: String?,
     val rememberedAudioName: String?,
-    val launchStartedAtMs: Long?
+    val launchStartedAtMs: Long?,
+    val preResolvedMimeType: String?,
+    val responseHeadersJson: String?
 ) {
     val torrentTrackers: List<String>
         get() {
@@ -92,7 +94,9 @@ internal data class PlayerNavigationArgs(
                 contentLanguage = decodedOrNull("contentLanguage"),
                 rememberedAudioLanguage = decodedOrNull("rememberedAudioLanguage"),
                 rememberedAudioName = decodedOrNull("rememberedAudioName"),
-                launchStartedAtMs = savedStateHandle.get<String>("launchStartedAtMs")?.toLongOrNull()
+                launchStartedAtMs = savedStateHandle.get<String>("launchStartedAtMs")?.toLongOrNull(),
+                preResolvedMimeType = decodedOrNull("preResolvedMimeType"),
+                responseHeadersJson = decodedOrNull("responseHeaders")
             )
         }
     }

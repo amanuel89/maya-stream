@@ -256,6 +256,7 @@ data class PlayerSettings(
     val frameRateMatchingMode: FrameRateMatchingMode = FrameRateMatchingMode.OFF,
     val resolutionMatchingEnabled: Boolean = false,
     // Stream selection settings
+    val streamAutoPlayEnabled: Boolean = false,
     val streamAutoPlayMode: StreamAutoPlayMode = StreamAutoPlayMode.MANUAL,
     val streamAutoPlaySource: StreamAutoPlaySource = StreamAutoPlaySource.ALL_SOURCES,
     val streamAutoPlaySelectedAddons: Set<String> = emptySet(),
@@ -265,6 +266,8 @@ data class PlayerSettings(
     val streamAutoPlayPreferBingeGroupForNextEpisode: Boolean = true,
     val streamAutoPlayReuseBingeGroup: Boolean = true,
     val streamAutoPlayTimeoutSeconds: Int = 3,
+    val streamSelectionPolicy: String = com.nuvio.tv.core.player.StreamSelectionPolicy.FAST_START.name,
+    val streamHeuristicProbeEnabled: Boolean = true,
     val stillWatchingEnabled: Boolean = false,
     val stillWatchingEpisodeThreshold: Int = DEFAULT_STILL_WATCHING_EPISODE_THRESHOLD,
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
@@ -499,6 +502,7 @@ class PlayerSettingsDataStore @Inject constructor(
     private val frameRateMatchingKey = booleanPreferencesKey("frame_rate_matching")
     private val frameRateMatchingModeKey = stringPreferencesKey("frame_rate_matching_mode")
     private val resolutionMatchingEnabledKey = booleanPreferencesKey("resolution_matching_enabled")
+    private val streamAutoPlayEnabledKey = booleanPreferencesKey("stream_auto_play_enabled")
     private val streamAutoPlayModeKey = stringPreferencesKey("stream_auto_play_mode")
     private val streamAutoPlaySourceKey = stringPreferencesKey("stream_auto_play_source")
     private val streamAutoPlaySelectedAddonsKey = stringSetPreferencesKey("stream_auto_play_selected_addons")
@@ -508,6 +512,8 @@ class PlayerSettingsDataStore @Inject constructor(
     private val streamAutoPlayPreferBingeGroupForNextEpisodeKey = booleanPreferencesKey("stream_auto_play_prefer_bingegroup_next_episode")
     private val streamAutoPlayReuseBingeGroupKey = booleanPreferencesKey("stream_auto_play_reuse_binge_group")
     private val streamAutoPlayTimeoutSecondsKey = intPreferencesKey("stream_auto_play_timeout_seconds")
+    private val streamSelectionPolicyKey = stringPreferencesKey("stream_selection_policy")
+    private val streamHeuristicProbeEnabledKey = booleanPreferencesKey("stream_heuristic_probe_enabled")
     private val stillWatchingEnabledKey = booleanPreferencesKey("still_watching_enabled")
     private val stillWatchingEpisodeThresholdKey = intPreferencesKey("still_watching_episode_threshold")
     private val nextEpisodeThresholdModeKey = stringPreferencesKey("next_episode_threshold_mode")
@@ -852,6 +858,12 @@ class PlayerSettingsDataStore @Inject constructor(
                 streamAutoPlayMode = prefs[streamAutoPlayModeKey]?.let {
                     runCatching { StreamAutoPlayMode.valueOf(it) }.getOrDefault(StreamAutoPlayMode.MANUAL)
                 } ?: StreamAutoPlayMode.MANUAL,
+                streamAutoPlayEnabled = prefs[streamAutoPlayEnabledKey] ?: run {
+                    val mode = prefs[streamAutoPlayModeKey]?.let {
+                        runCatching { StreamAutoPlayMode.valueOf(it) }.getOrNull()
+                    }
+                    mode != null && mode != StreamAutoPlayMode.MANUAL
+                },
                 streamAutoPlaySource = prefs[streamAutoPlaySourceKey]?.let {
                     runCatching { StreamAutoPlaySource.valueOf(it) }.getOrDefault(StreamAutoPlaySource.ALL_SOURCES)
                 } ?: StreamAutoPlaySource.ALL_SOURCES,
@@ -866,6 +878,9 @@ class PlayerSettingsDataStore @Inject constructor(
                 streamAutoPlayTimeoutSeconds = PlayerSettings.applyLegacyTimeoutSentinelMigration(
                     prefs[streamAutoPlayTimeoutSecondsKey]
                 ),
+                streamSelectionPolicy = prefs[streamSelectionPolicyKey]
+                    ?: com.nuvio.tv.core.player.StreamSelectionPolicy.FAST_START.name,
+                streamHeuristicProbeEnabled = prefs[streamHeuristicProbeEnabledKey] ?: true,
                 stillWatchingEnabled = prefs[stillWatchingEnabledKey] ?: false,
                 stillWatchingEpisodeThreshold = prefs[stillWatchingEpisodeThresholdKey]
                     ?.coerceIn(
@@ -1172,6 +1187,20 @@ class PlayerSettingsDataStore @Inject constructor(
         setFrameRateMatchingMode(
             if (enabled) FrameRateMatchingMode.START_STOP else FrameRateMatchingMode.OFF
         )
+    }
+
+    suspend fun setStreamAutoPlayEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[streamAutoPlayEnabledKey] = enabled
+            if (enabled) {
+                val currentMode = prefs[streamAutoPlayModeKey]?.let {
+                    runCatching { StreamAutoPlayMode.valueOf(it) }.getOrNull()
+                }
+                if (currentMode == null || currentMode == StreamAutoPlayMode.MANUAL) {
+                    prefs[streamAutoPlayModeKey] = StreamAutoPlayMode.FIRST_STREAM.name
+                }
+            }
+        }
     }
 
     suspend fun setStreamAutoPlayMode(mode: StreamAutoPlayMode) {

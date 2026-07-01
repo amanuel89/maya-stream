@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.tv.R
@@ -58,8 +57,11 @@ fun EssentialPlaybackSettingsContent(
                     subtitle = stringResource(R.string.essential_playback_header_subtitle)
                 )
             }
-            item(key = "playback_basics") {
-                SettingsGroupCard(modifier = Modifier.fillMaxWidth(), title = stringResource(R.string.essential_playback_basics)) {
+            item(key = "playback_autoplay") {
+                SettingsGroupCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = stringResource(R.string.autoplay_enable_title)
+                ) {
                     SettingsToggleRow(
                         title = stringResource(R.string.autoplay_enable_title),
                         subtitle = stringResource(R.string.autoplay_enable_sub),
@@ -67,11 +69,9 @@ fun EssentialPlaybackSettingsContent(
                         onToggle = {
                             val current = settings ?: return@SettingsToggleRow
                             coroutineScope.launch {
-                                if (StreamAutoPlayPolicy.isAutoplaySelectionEnabled(current)) {
-                                    viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.MANUAL)
-                                } else {
-                                    viewModel.setStreamAutoPlayMode(StreamAutoPlayMode.FIRST_STREAM)
-                                }
+                                viewModel.setStreamAutoPlayEnabled(
+                                    !StreamAutoPlayPolicy.isAutoplaySelectionEnabled(current)
+                                )
                             }
                         },
                         enabled = settings != null,
@@ -115,6 +115,13 @@ fun EssentialPlaybackSettingsContent(
                         },
                         enabled = settings != null
                     )
+                }
+            }
+            item(key = "playback_p2p") {
+                SettingsGroupCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = stringResource(R.string.essential_p2p_streams)
+                ) {
                     SettingsToggleRow(
                         title = stringResource(R.string.essential_p2p_streams),
                         subtitle = stringResource(R.string.essential_p2p_streams_subtitle),

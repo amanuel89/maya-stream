@@ -476,7 +476,9 @@ class StreamRepositoryImpl @Inject constructor(
             ytId = null,
             externalUrl = null,
             quality = quality,
-            qualityValue = parseQualityValue(quality)
+            qualityValue = parseQualityValue(quality),
+            seeders = seeders,
+            sizeBytes = com.nuvio.tv.core.debrid.StreamTextSizeParser.sizeBytesFromText(size)
         )
     }
 

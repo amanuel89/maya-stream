@@ -17,9 +17,14 @@ import com.nuvio.tv.core.sync.PluginCatalogSyncService
 import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.core.torrent.TorrentService
 import com.nuvio.tv.core.torrent.TorrentState
-import com.nuvio.tv.core.player.FastStreamSelector
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
+import com.nuvio.tv.core.player.StreamHeuristicEngine
+import com.nuvio.tv.core.player.StreamRankingContext
+import com.nuvio.tv.core.player.StreamSelectionCoordinator
+import com.nuvio.tv.core.player.StreamSelectionPolicy
+import com.nuvio.tv.core.player.ViabilityProbeConfig
+import com.nuvio.tv.ui.screens.player.PlayerMediaSourceFactory
 import com.nuvio.tv.core.streams.StreamBadgePresentation
 import com.nuvio.tv.data.local.PlayerPreference
 import com.nuvio.tv.data.local.PlayerSettings
@@ -93,6 +98,7 @@ class StreamScreenViewModel @Inject constructor(
     private val subtitleRepository: com.nuvio.tv.domain.repository.SubtitleRepository,
     private val subtitleFileCache: com.nuvio.tv.core.player.SubtitleFileCache,
     private val torrentService: TorrentService,
+    private val streamSelectionCoordinator: StreamSelectionCoordinator,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var autoPlayHandledForSession = false
@@ -113,6 +119,8 @@ class StreamScreenViewModel @Inject constructor(
     private var streamBadgePresentationRequestId = 0L
     private var badgedAddonNames: Set<String> = emptySet()
     private var expectedPluginChipNames: Set<String> = emptySet()
+    private var viabilityProbesRemaining: Int = 3
+    private var pendingLaunchWarmup: LaunchWarmup? = null
 
     private val embeddedStreamGroupName: String by lazy {
         context.getString(R.string.stream_embedded_group)
@@ -187,10 +195,13 @@ class StreamScreenViewModel @Inject constructor(
                 return@launch
             }
             val pick = if (directAutoPlayFlowEnabledForSession) {
-                FastStreamSelector.selectQuickPlayStream(
+                StreamHeuristicEngine.selectBest(
                     streams = nonTorrentStreams,
-                    installedAddonNames = installedAddonOrder.toSet(),
-                    allowTorrents = false
+                    context = buildRankingContext(
+                        playerSettings = playerSettings,
+                        installedAddonNames = installedAddonOrder.toSet(),
+                        allowTorrents = false
+                    )
                 )
             } else {
                 StreamAutoPlaySelector.selectAutoPlayStream(
@@ -201,7 +212,8 @@ class StreamScreenViewModel @Inject constructor(
                     installedAddonNames = installedAddonOrder.toSet(),
                     selectedAddons = playerSettings.streamAutoPlaySelectedAddons,
                     selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
-                    allowTorrents = false
+                    allowTorrents = false,
+                    selectionPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
                 )
             }
             if (pick != null) {
@@ -371,9 +383,10 @@ class StreamScreenViewModel @Inject constructor(
     }
 
     private fun shouldUseDirectAutoPlayFlow(
-        playerPreference: PlayerPreference,
+        streamAutoPlayEnabled: Boolean,
         streamAutoPlayMode: StreamAutoPlayMode
     ): Boolean {
+        if (!streamAutoPlayEnabled) return false
         return streamAutoPlayMode != StreamAutoPlayMode.MANUAL
     }
 
@@ -391,8 +404,12 @@ class StreamScreenViewModel @Inject constructor(
             streamLoadCompleted = false
             val playerSettings = playerSettingsDataStore.playerSettings.first()
             val allowTorrents = torrentSettings.settings.first().p2pEnabled
-            val quickPlayFlow = !manualSelection
+            val quickPlayFlow = !manualSelection && playerSettings.streamAutoPlayEnabled
             if (manualSelection) {
+                directAutoPlayModeInitializedForSession = true
+                directAutoPlayFlowEnabledForSession = false
+                autoPlayHandledForSession = true
+            } else if (!playerSettings.streamAutoPlayEnabled) {
                 directAutoPlayModeInitializedForSession = true
                 directAutoPlayFlowEnabledForSession = false
                 autoPlayHandledForSession = true
@@ -432,7 +449,7 @@ class StreamScreenViewModel @Inject constructor(
                 }
             }
 
-            if (!autoPlayHandledForSession && playerSettings.streamReuseLastLinkEnabled) {
+            if (!autoPlayHandledForSession && playerSettings.streamAutoPlayEnabled && playerSettings.streamReuseLastLinkEnabled) {
                 val cached = streamLinkCacheDataStore.getValid(
                     contentKey = streamCacheKey,
                     maxAgeMs = playerSettings.streamReuseLastLinkCacheHours * 60L * 60L * 1000L
@@ -520,13 +537,17 @@ class StreamScreenViewModel @Inject constructor(
                         preferredBingeGroup = persistedBingeGroup,
                         preferBingeGroupInSelection = true,
                         bingeGroupOnly = true,
-                        allowTorrents = allowTorrents
+                        allowTorrents = allowTorrents,
+                        selectionPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
                     )?.let { return it }
                 }
-                return FastStreamSelector.selectQuickPlayStream(
+                return StreamHeuristicEngine.selectBest(
                     streams = streams,
-                    installedAddonNames = installedAddonNames,
-                    allowTorrents = allowTorrents
+                    context = buildRankingContext(
+                        playerSettings = playerSettings,
+                        installedAddonNames = installedAddonNames,
+                        allowTorrents = allowTorrents
+                    )
                 )
             }
 
@@ -534,7 +555,17 @@ class StreamScreenViewModel @Inject constructor(
                 if (!quickPlayFlow || resolvedAutoPlayTarget || autoPlayHandledForSession) return false
                 val streams = StreamAutoPlaySelector.orderAddonStreams(addonStreamGroups, installedAddonOrder)
                     .flatMap { it.streams }
-                val pick = selectQuickPlayStream(streams) ?: return false
+                val context = buildRankingContext(
+                    playerSettings = playerSettings,
+                    installedAddonNames = installedAddonOrder.toSet(),
+                    allowTorrents = allowTorrents
+                )
+                val ranked = streamSelectionCoordinator.rank(streams, context)
+                if (!streamSelectionCoordinator.isEarlyPickEligible(ranked, context.policy, probeRan = false)) {
+                    return false
+                }
+                val pick = ranked.firstOrNull()?.stream ?: return false
+                Log.d(TAG, "Early auto-play pick: ${ranked.first().breakdown.formatForLog(pick)}")
                 resolvedAutoPlayTarget = true
                 autoSelectTriggered = true
                 updateUiStateIfChanged {
@@ -599,7 +630,8 @@ class StreamScreenViewModel @Inject constructor(
                         selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
                         preferredBingeGroup = persistedBingeGroup,
                         preferBingeGroupInSelection = persistedBingeGroup != null,
-                        allowTorrents = allowTorrents
+                        allowTorrents = allowTorrents,
+                        selectionPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
                     )
                 }
                 if (selectedAutoPlayStream != null) {
@@ -800,7 +832,8 @@ class StreamScreenViewModel @Inject constructor(
                                     preferredBingeGroup = persistedBingeGroup,
                                     preferBingeGroupInSelection = true,
                                     bingeGroupOnly = true,
-                                    allowTorrents = allowTorrents
+                                    allowTorrents = allowTorrents,
+                                    selectionPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
                                 )
                                 if (earlyMatch != null) {
                                     resolvedAutoPlayTarget = true
@@ -1268,7 +1301,9 @@ class StreamScreenViewModel @Inject constructor(
                     isTorrent = false,
                     headers = null,
                     filename = result.filename ?: basePlaybackInfo.filename,
-                    videoSize = result.videoSize ?: basePlaybackInfo.videoSize
+                    videoSize = result.videoSize ?: basePlaybackInfo.videoSize,
+                    preResolvedMimeType = basePlaybackInfo.preResolvedMimeType,
+                    probeResponseHeaders = basePlaybackInfo.probeResponseHeaders
                 )
                 // Save resolved URL to cache for reuse last link
                 if (!result.url.isNullOrBlank()) {
@@ -1395,6 +1430,58 @@ class StreamScreenViewModel @Inject constructor(
         }
     }
 
+    suspend fun prepareLaunchWarmup(stream: Stream) {
+        pendingLaunchWarmup = null
+        val url = stream.getStreamUrl() ?: return
+        if (stream.isTorrent() || stream.isExternal()) return
+
+        val playerSettings = playerSettingsDataStore.playerSettings.first()
+        val rankingContext = buildRankingContext(
+            playerSettings = playerSettings,
+            installedAddonNames = emptySet(),
+            allowTorrents = true
+        )
+        val probeConfig = ViabilityProbeConfig(
+            enabled = playerSettings.streamHeuristicProbeEnabled,
+            maxProbesPerSession = viabilityProbesRemaining
+        )
+        val selection = streamSelectionCoordinator.selectBest(
+            streams = listOf(stream),
+            context = rankingContext,
+            probeConfig = probeConfig,
+            appContext = context,
+            probesRemaining = viabilityProbesRemaining
+        )
+        if (selection.probeRan) {
+            viabilityProbesRemaining = (viabilityProbesRemaining - 1).coerceAtLeast(0)
+        }
+
+        val requestHeaders = stream.behaviorHints?.proxyHeaders?.request.orEmpty()
+        val responseHeaders = selection.probeMetadata?.responseHeaders.orEmpty()
+        val mime = PlayerMediaSourceFactory.probeMimeType(
+            url = url,
+            headers = requestHeaders,
+            filename = stream.behaviorHints?.filename,
+            responseHeaders = responseHeaders
+        )
+        pendingLaunchWarmup = LaunchWarmup(
+            preResolvedMimeType = mime ?: selection.probeMetadata?.sniffedMimeType,
+            probeResponseHeaders = responseHeaders
+        )
+    }
+
+    private fun buildRankingContext(
+        playerSettings: PlayerSettings,
+        installedAddonNames: Set<String>,
+        allowTorrents: Boolean
+    ): StreamRankingContext {
+        return StreamRankingContext(
+            policy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy),
+            installedAddonNames = installedAddonNames,
+            allowTorrents = allowTorrents
+        )
+    }
+
     /**
      * Gets the selected stream for playback
      */
@@ -1429,8 +1516,11 @@ class StreamScreenViewModel @Inject constructor(
             streamDescription = stream.description,
             fileIdx = stream.getEffectiveFileIdx(),
             sources = stream.sources,
-            contentLanguage = contentLanguage
+            contentLanguage = contentLanguage,
+            preResolvedMimeType = pendingLaunchWarmup?.preResolvedMimeType,
+            probeResponseHeaders = pendingLaunchWarmup?.probeResponseHeaders
         )
+        pendingLaunchWarmup = null
 
         val url = playbackInfo.url
         if (!url.isNullOrBlank() && !playbackInfo.isExternal) {
@@ -1541,7 +1631,11 @@ class StreamScreenViewModel @Inject constructor(
             }
             
             val fileLimit = playbackInfo.videoSize ?: Long.MAX_VALUE
-            val preloadTarget = minOf(5_242_880L, fileLimit)
+            val playerSettings = playerSettingsDataStore.playerSettings.first()
+            val fastStartTorrentPreload = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy) ==
+                StreamSelectionPolicy.FAST_START
+            val defaultPreloadBytes = if (fastStartTorrentPreload) 2_097_152L else 5_242_880L
+            val preloadTarget = minOf(defaultPreloadBytes, fileLimit)
 
             val preloadCompleted = kotlinx.coroutines.CompletableDeferred<Unit>()
             val statsJob = viewModelScope.launch {
@@ -1915,6 +2009,11 @@ private fun Stream.badgeMergeKey(): String {
     return "$addonName|${name}:${title}:${description?.hashCode() ?: 0}"
 }
 
+private data class LaunchWarmup(
+    val preResolvedMimeType: String?,
+    val probeResponseHeaders: Map<String, String>
+)
+
 data class StreamPlaybackInfo(
     val url: String?,
     val title: String,
@@ -1945,7 +2044,9 @@ data class StreamPlaybackInfo(
     val streamDescription: String? = null,
     val fileIdx: Int? = null,
     val sources: List<String>? = null,
-    val contentLanguage: String? = null
+    val contentLanguage: String? = null,
+    val preResolvedMimeType: String? = null,
+    val probeResponseHeaders: Map<String, String>? = null
 )
 
 private fun Stream.isReadyForDebridPreparation(): Boolean =

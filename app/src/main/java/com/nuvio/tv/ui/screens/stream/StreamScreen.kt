@@ -254,6 +254,7 @@ fun StreamScreen(
             viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
             return@LaunchedEffect
         }
+        viewModel.prepareLaunchWarmup(stream)
         val playbackInfo = viewModel.resolveStreamForPlayback(stream)
         if (playbackInfo == null) {
             viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
@@ -411,6 +412,7 @@ fun StreamScreen(
                             focusedStreamIndex = currentIndex
                         }
                         scope.coroutineLaunch {
+                            viewModel.prepareLaunchWarmup(stream)
                             val playbackInfo = viewModel.resolveStreamForPlayback(stream)
                             if (playbackInfo != null) {
                                 pendingRestoreOnResume = true

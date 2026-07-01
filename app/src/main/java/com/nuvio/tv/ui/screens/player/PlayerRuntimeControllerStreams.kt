@@ -7,6 +7,7 @@ import androidx.media3.common.util.UnstableApi
 import com.nuvio.tv.core.debrid.DirectDebridPlayableResult
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
+import com.nuvio.tv.core.player.StreamSelectionPolicy
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.StreamAutoPlaySource
@@ -1531,7 +1532,7 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
             val playerSettings = playerSettingsDataStore.playerSettings.first()
             val allowTorrents = torrentSettings.settings.first().p2pEnabled
             val shouldAutoSelectInManualMode =
-                playerSettings.streamAutoPlayMode == StreamAutoPlayMode.MANUAL &&
+                !playerSettings.streamAutoPlayEnabled &&
                     (
                         playerSettings.streamAutoPlayNextEpisodeEnabled ||
                             playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode
@@ -1540,7 +1541,7 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                 shouldAutoSelectInManualMode &&
                     !playerSettings.streamAutoPlayNextEpisodeEnabled &&
                     playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode
-            if (playerSettings.streamAutoPlayMode == StreamAutoPlayMode.MANUAL && !shouldAutoSelectInManualMode) {
+            if (!playerSettings.streamAutoPlayEnabled && !shouldAutoSelectInManualMode) {
                 _uiState.update {
                     it.copy(
                         postPlayMode = null,
@@ -1605,7 +1606,8 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                     },
                     preferBingeGroupInSelection = playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode,
                     bingeGroupOnly = bingeGroupOnlyManualMode,
-                    allowTorrents = allowTorrents
+                    allowTorrents = allowTorrents,
+                    selectionPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
                 )
             }
 
@@ -1624,7 +1626,8 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
                     preferredBingeGroup = currentStreamBingeGroup,
                     preferBingeGroupInSelection = true,
                     bingeGroupOnly = true,
-                    allowTorrents = allowTorrents
+                    allowTorrents = allowTorrents,
+                    selectionPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
                 )
             }
 

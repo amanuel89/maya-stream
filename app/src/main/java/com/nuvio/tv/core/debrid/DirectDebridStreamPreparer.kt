@@ -2,6 +2,9 @@ package com.nuvio.tv.core.debrid
 
 import android.util.Log
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
+import com.nuvio.tv.core.player.StreamHeuristicEngine
+import com.nuvio.tv.core.player.StreamRankingContext
+import com.nuvio.tv.core.player.StreamSelectionPolicy
 import com.nuvio.tv.data.local.DebridSettingsDataStore
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
@@ -93,7 +96,8 @@ class DirectDebridStreamPreparer @Inject constructor(
             source = playerSettings.streamAutoPlaySource,
             installedAddonNames = installedAddonNames,
             selectedAddons = playerSettings.streamAutoPlaySelectedAddons,
-            selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins
+            selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
+            selectionPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
         )
         if (autoPlaySelection?.let { it.isDirectDebrid() || it.isCachedLocalDebridTorrent() } == true) {
             candidates.firstOrNull { it.preparationKey() == autoPlaySelection.preparationKey() }
@@ -116,6 +120,17 @@ class DirectDebridStreamPreparer @Inject constructor(
 
         candidates
             .filter { candidate -> prioritized.none { it.preparationKey() == candidate.preparationKey() } }
+            .let { remaining ->
+                val ranked = StreamHeuristicEngine.rank(
+                    streams = remaining,
+                    context = StreamRankingContext(
+                        policy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy),
+                        installedAddonNames = installedAddonNames,
+                        allowTorrents = true
+                    )
+                )
+                ranked.map { it.stream }
+            }
             .forEach(prioritized::add)
 
         return prioritized.take(limit)

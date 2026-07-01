@@ -57,7 +57,8 @@ object StreamAutoPlaySelector {
         preferredBingeGroup: String? = null,
         preferBingeGroupInSelection: Boolean = false,
         bingeGroupOnly: Boolean = false,
-        allowTorrents: Boolean = true
+        allowTorrents: Boolean = true,
+        selectionPolicy: StreamSelectionPolicy = StreamSelectionPolicy.FAST_START
     ): Stream? {
         if (streams.isEmpty()) return null
 
@@ -100,7 +101,17 @@ object StreamAutoPlaySelector {
 
         return when (mode) {
             StreamAutoPlayMode.MANUAL -> null
-            StreamAutoPlayMode.FIRST_STREAM -> candidateStreams.firstOrNull { isPlayable(it, allowTorrents) }
+            StreamAutoPlayMode.FIRST_STREAM -> {
+                val playable = candidateStreams.filter { isPlayable(it, allowTorrents) }
+                StreamHeuristicEngine.selectBest(
+                    streams = playable,
+                    context = StreamRankingContext(
+                        policy = selectionPolicy,
+                        installedAddonNames = installedAddonNames,
+                        allowTorrents = allowTorrents
+                    )
+                )
+            }
             StreamAutoPlayMode.REGEX_MATCH -> {
                 val pattern = regexPattern.trim()
  
@@ -146,7 +157,14 @@ object StreamAutoPlaySelector {
                 }
 
                 if (matchingStreams.isEmpty()) return null
-                matchingStreams.firstOrNull { isPlayable(it, allowTorrents) }
+                StreamHeuristicEngine.selectBest(
+                    streams = matchingStreams,
+                    context = StreamRankingContext(
+                        policy = selectionPolicy,
+                        installedAddonNames = installedAddonNames,
+                        allowTorrents = allowTorrents
+                    )
+                )
             }
 
         }

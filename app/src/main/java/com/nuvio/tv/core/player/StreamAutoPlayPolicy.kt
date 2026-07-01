@@ -5,10 +5,11 @@ import com.nuvio.tv.data.local.StreamAutoPlayMode
 
 object StreamAutoPlayPolicy {
     fun isAutoplaySelectionEnabled(playerSettings: PlayerSettings): Boolean {
-        return playerSettings.streamAutoPlayMode != StreamAutoPlayMode.MANUAL
+        return playerSettings.streamAutoPlayEnabled
     }
 
     fun isEffectivelyEnabled(playerSettings: PlayerSettings): Boolean {
+        if (!playerSettings.streamAutoPlayEnabled) return false
         if (playerSettings.streamReuseLastLinkEnabled) return true
         if (playerSettings.streamAutoPlayReuseBingeGroup &&
             playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode) return true

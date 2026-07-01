@@ -164,7 +164,7 @@ fun PlayerScreen(
         viewModel.stopAndRelease()
         val completed = timeline.duration > 0L &&
             (timeline.currentPosition.toFloat() / timeline.duration.toFloat()) >= WatchProgress.COMPLETED_THRESHOLD
-        onBackPress(uiState.currentVideoId, uiState.currentSeason, uiState.currentEpisode, uiState.streamAutoPlayMode != StreamAutoPlayMode.MANUAL, completed)
+        onBackPress(uiState.currentVideoId, uiState.currentSeason, uiState.currentEpisode, uiState.streamAutoPlayEnabled, completed)
     }
     val exitPlayerFromError: () -> Unit = {
         viewModel.stopAndRelease()
@@ -180,7 +180,7 @@ fun PlayerScreen(
     val shouldConfirmNextEpisodeOnEnd =
         uiState.playbackEnded &&
             uiState.error == null &&
-            (uiState.streamAutoPlayMode != StreamAutoPlayMode.MANUAL ||
+            (uiState.streamAutoPlayEnabled ||
                 uiState.streamAutoPlayPreferBingeGroupForNextEpisode) &&
             !uiState.streamAutoPlayNextEpisodeEnabled &&
             nextEpisodeForEndPrompt != null
@@ -297,7 +297,7 @@ fun PlayerScreen(
                         uiState.currentVideoId,
                         uiState.currentSeason,
                         uiState.currentEpisode,
-                        uiState.streamAutoPlayMode != StreamAutoPlayMode.MANUAL,
+                        uiState.streamAutoPlayEnabled,
                         true
                     )
                 }
@@ -314,7 +314,7 @@ fun PlayerScreen(
                         uiState.currentVideoId,
                         uiState.currentSeason,
                         uiState.currentEpisode,
-                        uiState.streamAutoPlayMode != StreamAutoPlayMode.MANUAL,
+                        uiState.streamAutoPlayEnabled,
                         true
                     )
                 }
@@ -989,7 +989,7 @@ fun PlayerScreen(
                     // Exit PlayerScreen - tracker will save progress when external player returns
                     val completed = timeline.duration > 0L &&
                         (timeline.currentPosition.toFloat() / timeline.duration.toFloat()) >= WatchProgress.COMPLETED_THRESHOLD
-                    onBackPress(uiState.currentVideoId, uiState.currentSeason, uiState.currentEpisode, uiState.streamAutoPlayMode != StreamAutoPlayMode.MANUAL, completed)
+                    onBackPress(uiState.currentVideoId, uiState.currentSeason, uiState.currentEpisode, uiState.streamAutoPlayEnabled, completed)
                 },
                 onShowStreamInfo = {
                     restoreStreamInfoFocus = true

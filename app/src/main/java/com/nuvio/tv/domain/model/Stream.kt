@@ -24,7 +24,9 @@ data class Stream(
     val qualityValue: Int = -1,
     val clientResolve: StreamClientResolve? = null,
     val debridCacheStatus: StreamDebridCacheStatus? = null,
-    val badges: List<StreamBadge> = emptyList()
+    val badges: List<StreamBadge> = emptyList(),
+    val seeders: Int? = null,
+    val sizeBytes: Long? = null
 ) {
     /**
      * Returns the primary stream source URL
