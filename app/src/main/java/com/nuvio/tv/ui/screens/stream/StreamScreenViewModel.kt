@@ -6,12 +6,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.debrid.DebridStreamPresentation
 import com.nuvio.tv.core.debrid.DirectDebridResolveResult
 import com.nuvio.tv.core.debrid.DirectDebridResolver
 import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.sync.PluginCatalogSyncService
 import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.core.torrent.TorrentService
 import com.nuvio.tv.core.torrent.TorrentState
@@ -72,6 +74,7 @@ class StreamScreenViewModel @Inject constructor(
     private val streamRepository: StreamRepository,
     private val addonRepository: AddonRepository,
     private val pluginManager: PluginManager,
+    private val pluginCatalogSyncService: PluginCatalogSyncService,
     private val metaRepository: MetaRepository,
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val streamLinkCacheDataStore: StreamLinkCacheDataStore,
@@ -613,6 +616,8 @@ class StreamScreenViewModel @Inject constructor(
                 applySuccess(baseline, isAllLoaded = false)
             }
 
+            ensurePluginCatalogSynced()
+
             updateSourceChipsForFetchStart(installedAddons, directDebridSourceNames, baseline)
 
             // Merges repository data with the resume baseline.  Addons
@@ -901,6 +906,16 @@ class StreamScreenViewModel @Inject constructor(
 
         val canonicalVideoMetaId = videoId.substringBefore(":")
         return !metaId.equals(canonicalVideoMetaId, ignoreCase = true)
+    }
+
+    private suspend fun ensurePluginCatalogSynced() {
+        if (!AppFeaturePolicy.pluginsEnabled) return
+        if (!pluginManager.pluginsEnabled.first()) return
+        val repos = pluginManager.repositories.first()
+        val enabledScrapers = pluginManager.enabledScrapers.first()
+        if (repos.isNotEmpty() && enabledScrapers.isNotEmpty()) return
+        Log.d(TAG, "Plugin repositories missing before stream fetch; syncing catalog from GitHub")
+        pluginCatalogSyncService.syncFromGitHub(force = true)
     }
 
     private suspend fun updateSourceChipsForFetchStart(

@@ -1,6 +1,7 @@
 package com.nuvio.tv.core.sync
 
 import android.util.Log
+import com.nuvio.tv.core.network.GitHubRawUrlResolver
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.data.local.MayaStreamCatalogPreferences
 import com.nuvio.tv.data.repository.RemoteCatalogRepository
@@ -130,8 +131,10 @@ class PluginCatalogSyncService @Inject constructor(
         )
     }
 
-    private fun normalizeRepoUrl(url: String): String =
-        url.trim().trimEnd('/').lowercase()
+    private fun normalizeRepoUrl(url: String): String {
+        val trimmed = GitHubRawUrlResolver.toRawUrl(url).trim().trimEnd('/').lowercase()
+        return if (trimmed.endsWith("/manifest.json")) trimmed else "$trimmed/manifest.json"
+    }
 
     private fun sha256(text: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(text.toByteArray(Charsets.UTF_8))
