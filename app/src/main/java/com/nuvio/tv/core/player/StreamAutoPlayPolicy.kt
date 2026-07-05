@@ -8,6 +8,10 @@ object StreamAutoPlayPolicy {
         return playerSettings.streamAutoPlayEnabled
     }
 
+    fun allowsTorrents(playerSettings: PlayerSettings, globalP2pEnabled: Boolean): Boolean {
+        return playerSettings.streamAutoPlayAllowTorrents && globalP2pEnabled
+    }
+
     fun isEffectivelyEnabled(playerSettings: PlayerSettings): Boolean {
         if (!playerSettings.streamAutoPlayEnabled) return false
         if (playerSettings.streamReuseLastLinkEnabled) return true

@@ -234,6 +234,8 @@ fun PlayerScreen(
             exitPlayerFromError()
         } else if (uiState.showAudioOverlay || uiState.showSubtitleOverlay) {
             viewModel.onEvent(PlayerEvent.OnDismissTransientOverlay)
+        } else if (uiState.failoverCancelVisible) {
+            viewModel.onEvent(PlayerEvent.OnCancelFailoverSwitch)
         } else if (uiState.showStreamInfoOverlay) {
             dismissStreamInfoOverlay()
         } else if (uiState.showPauseOverlay) {
@@ -1026,6 +1028,31 @@ fun PlayerScreen(
                 .padding(top = 128.dp)
         ) {
             StreamSourceIndicator(text = uiState.streamSourceIndicatorText)
+        }
+
+        AnimatedVisibility(
+            visible = uiState.failoverCancelVisible,
+            enter = fadeIn(animationSpec = tween(NuvioMotion.tokens.durations.fast)),
+            exit = fadeOut(animationSpec = tween(NuvioMotion.tokens.durations.fast)),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .zIndex(2.4f)
+        ) {
+            FailoverCancelOverlay(
+                targetLabel = uiState.failoverCancelMessage,
+                countdownSec = uiState.failoverCancelCountdownSec
+            )
+        }
+
+        AnimatedVisibility(
+            visible = uiState.showFailoverUndo && !uiState.failoverCancelVisible,
+            enter = fadeIn(animationSpec = tween(NuvioMotion.tokens.durations.fast)),
+            exit = fadeOut(animationSpec = tween(NuvioMotion.tokens.durations.fast)),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 80.dp, end = 48.dp)
+        ) {
+            FailoverUndoChip(onClick = { viewModel.onEvent(PlayerEvent.OnUndoFailoverSwitch) })
         }
 
         AnimatedVisibility(
@@ -2446,6 +2473,51 @@ private fun StreamSourceIndicator(text: String) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun FailoverCancelOverlay(
+    targetLabel: String,
+    countdownSec: Int
+) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.Black.copy(alpha = 0.88f))
+            .padding(horizontal = 24.dp, vertical = NuvioTheme.spacing.lg),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.player_failover_cancel_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White
+        )
+        Text(
+            text = stringResource(R.string.player_failover_cancel_message, targetLabel, countdownSec),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.padding(top = NuvioTheme.spacing.sm)
+        )
+        Text(
+            text = stringResource(R.string.player_failover_cancel_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.padding(top = NuvioTheme.spacing.sm)
+        )
+    }
+}
+
+@Composable
+private fun FailoverUndoChip(onClick: () -> Unit) {
+    androidx.tv.material3.Button(
+        onClick = onClick,
+        colors = androidx.tv.material3.ButtonDefaults.colors(
+            containerColor = Color.Black.copy(alpha = 0.82f),
+            contentColor = Color.White
+        )
+    ) {
+        Text(text = stringResource(R.string.player_failover_undo))
     }
 }
 

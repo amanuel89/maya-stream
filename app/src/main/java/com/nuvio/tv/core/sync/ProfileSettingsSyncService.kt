@@ -102,6 +102,9 @@ private val localOnlyPlayerProfileSettingsKeys = setOf(
     "vod_cache_size_mode",
     "vod_cache_size_mb",
     "use_parallel_connections",
+    "stream_heuristic_probe_enabled",
+    "playback_source_failover_on_error",
+    "playback_source_failover_on_rebuffer",
     "buffer_engine_enabled",
     "parallel_network_enabled",
     "allow_large_target_buffer",
@@ -128,6 +131,7 @@ private val localOnlyPlayerProfileSettingsKeys = setOf(
     "migration_after_rebuffer_lowered_done",
     "migration_back_buffer_duration_reduced_done",
     "migration_target_buffer_size_reduced_done",
+    "migration_buffer_engine_tiered_v1_done",
     "nuvio_performance_mode_enabled"
 )
 

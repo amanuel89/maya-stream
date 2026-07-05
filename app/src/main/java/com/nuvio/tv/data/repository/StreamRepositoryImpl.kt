@@ -199,13 +199,18 @@ class StreamRepositoryImpl @Inject constructor(
                     resultChannel.close()
                 }
 
-                // Emit results as they arrive
+                // Emit results as they arrive — batch debrid cache checks across all
+                // accumulated addon results so providers are queried in one call.
                 for (result in resultChannel) {
-                    val checkingResult = localDebridAvailabilityService.markChecking(listOf(result)).firstOrNull() ?: result
-                    val checkedResult = localDebridAvailabilityService.annotateCachedAvailability(listOf(checkingResult)).firstOrNull() ?: checkingResult
-                    mergePresentedResult(accumulatedResults, checkedResult)
+                    val checkingResult = localDebridAvailabilityService.markChecking(listOf(result))
+                        .firstOrNull() ?: result
+                    mergePresentedResult(accumulatedResults, checkingResult)
+                    val annotatedResults = localDebridAvailabilityService
+                        .annotateCachedAvailability(accumulatedResults.toList())
+                    accumulatedResults.clear()
+                    accumulatedResults.addAll(annotatedResults)
                     emit(NetworkResult.Success(accumulatedResults.toList()))
-                    Log.d(TAG, "Emitted ${accumulatedResults.size} addon(s), latest: ${checkedResult.addonName} with ${checkedResult.streams.size} streams")
+                    Log.d(TAG, "Emitted ${accumulatedResults.size} addon(s), latest: ${checkingResult.addonName} with ${checkingResult.streams.size} streams")
                 }
             }
 

@@ -146,6 +146,7 @@ fun PlaybackSettingsContent(
     var showStreamRegexDialog by remember { mutableStateOf(false) }
     var showNextEpisodeThresholdModeDialog by remember { mutableStateOf(false) }
     var showReuseLastLinkCacheDialog by remember { mutableStateOf(false) }
+    var showSelectionPolicyDialog by remember { mutableStateOf(false) }
     var showPlayerPreferenceDialog by remember { mutableStateOf(false) }
     var showInternalPlayerEngineDialog by remember { mutableStateOf(false) }
 
@@ -169,6 +170,7 @@ fun PlaybackSettingsContent(
         showStreamRegexDialog = false
         showNextEpisodeThresholdModeDialog = false
         showReuseLastLinkCacheDialog = false
+        showSelectionPolicyDialog = false
         showPlayerPreferenceDialog = false
         showInternalPlayerEngineDialog = false
     }
@@ -213,6 +215,16 @@ fun PlaybackSettingsContent(
                 },
                 onShowNextEpisodeThresholdModeDialog = { openDialog { showNextEpisodeThresholdModeDialog = true } },
                 onShowReuseLastLinkCacheDialog = { openDialog { showReuseLastLinkCacheDialog = true } },
+                onShowSelectionPolicyDialog = { openDialog { showSelectionPolicyDialog = true } },
+                onSetStreamAutoPlayAllowTorrents = { enabled ->
+                    coroutineScope.launch { viewModel.setStreamAutoPlayAllowTorrents(enabled) }
+                },
+                onSetStreamAutoPlayBatchSources = { enabled ->
+                    coroutineScope.launch { viewModel.setStreamAutoPlayBatchSources(enabled) }
+                },
+                onSetPlaybackQualityUpgradeEnabled = { enabled ->
+                    coroutineScope.launch { viewModel.setPlaybackQualityUpgradeEnabled(enabled) }
+                },
                 onSetStreamAutoPlayNextEpisodeEnabled = { enabled ->
                     coroutineScope.launch { viewModel.setStreamAutoPlayNextEpisodeEnabled(enabled) }
                 },
@@ -381,6 +393,12 @@ fun PlaybackSettingsContent(
                 onSetEnableHttp2 = { enabled ->
                     coroutineScope.launch { viewModel.setEnableHttp2(enabled) }
                     memoryUsageTrigger++
+                },
+                onSetPlaybackSourceFailoverOnError = { enabled ->
+                    coroutineScope.launch { viewModel.setPlaybackSourceFailoverOnError(enabled) }
+                },
+                onSetPlaybackSourceFailoverOnRebuffer = { enabled ->
+                    coroutineScope.launch { viewModel.setPlaybackSourceFailoverOnRebuffer(enabled) }
                 }
         )
 
@@ -482,6 +500,7 @@ fun PlaybackSettingsContent(
         showStreamRegexDialog = showStreamRegexDialog,
         showNextEpisodeThresholdModeDialog = showNextEpisodeThresholdModeDialog,
         showReuseLastLinkCacheDialog = showReuseLastLinkCacheDialog,
+        showSelectionPolicyDialog = showSelectionPolicyDialog,
         onSetPlayerPreference = { preference ->
             coroutineScope.launch { viewModel.setPlayerPreference(preference) }
         },
@@ -547,6 +566,9 @@ fun PlaybackSettingsContent(
         onSetReuseLastLinkCacheHours = { hours ->
             coroutineScope.launch { viewModel.setStreamReuseLastLinkCacheHours(hours) }
         },
+        onSetSelectionPolicy = { policy ->
+            coroutineScope.launch { viewModel.setStreamSelectionPolicy(policy) }
+        },
         onDismissLanguageDialog = ::dismissAllDialogs,
         onDismissSecondaryLanguageDialog = ::dismissAllDialogs,
         onDismissSubtitleStartupModeDialog = ::dismissAllDialogs,
@@ -565,7 +587,8 @@ fun PlaybackSettingsContent(
         onDismissStreamAutoPlayAddonSelectionDialog = ::dismissAllDialogs,
         onDismissStreamAutoPlayPluginSelectionDialog = ::dismissAllDialogs,
         onDismissNextEpisodeThresholdModeDialog = ::dismissAllDialogs,
-        onDismissReuseLastLinkCacheDialog = ::dismissAllDialogs
+        onDismissReuseLastLinkCacheDialog = ::dismissAllDialogs,
+        onDismissSelectionPolicyDialog = ::dismissAllDialogs
     )
 }
 

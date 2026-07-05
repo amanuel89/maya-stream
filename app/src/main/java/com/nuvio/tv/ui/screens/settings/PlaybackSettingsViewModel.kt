@@ -359,6 +359,14 @@ class PlaybackSettingsViewModel @Inject constructor(
         playerSettingsDataStore.setBufferEngineEnabled(enabled)
     }
 
+    suspend fun setPlaybackSourceFailoverOnError(enabled: Boolean) {
+        playerSettingsDataStore.setPlaybackSourceFailoverOnError(enabled)
+    }
+
+    suspend fun setPlaybackSourceFailoverOnRebuffer(enabled: Boolean) {
+        playerSettingsDataStore.setPlaybackSourceFailoverOnRebuffer(enabled)
+    }
+
     suspend fun setParallelNetworkEnabled(enabled: Boolean) {
         playerSettingsDataStore.setParallelNetworkEnabled(enabled)
     }
@@ -475,6 +483,22 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     suspend fun setStreamAutoPlayTimeoutSeconds(seconds: Int) {
         playerSettingsDataStore.setStreamAutoPlayTimeoutSeconds(seconds)
+    }
+
+    suspend fun setStreamAutoPlayAllowTorrents(enabled: Boolean) {
+        playerSettingsDataStore.setStreamAutoPlayAllowTorrents(enabled)
+    }
+
+    suspend fun setStreamAutoPlayBatchSources(enabled: Boolean) {
+        playerSettingsDataStore.setStreamAutoPlayBatchSources(enabled)
+    }
+
+    suspend fun setStreamSelectionPolicy(policy: com.nuvio.tv.core.player.StreamSelectionPolicy) {
+        playerSettingsDataStore.setStreamSelectionPolicy(policy)
+    }
+
+    suspend fun setPlaybackQualityUpgradeEnabled(enabled: Boolean) {
+        playerSettingsDataStore.setPlaybackQualityUpgradeEnabled(enabled)
     }
 
     suspend fun setStillWatchingEnabled(enabled: Boolean) {

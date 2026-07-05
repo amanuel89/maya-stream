@@ -160,8 +160,12 @@ data class BufferSettings(
     val retainBackBufferFromKeyframe: Boolean = false
 ) {
     companion object {
-        const val DEFAULT_MIN_BUFFER_MS = 15_000
-        const val DEFAULT_MAX_BUFFER_MS = 45_000
+        const val DEFAULT_MIN_BUFFER_MS_LOW_RAM = 15_000
+        const val DEFAULT_MAX_BUFFER_MS_LOW_RAM = 45_000
+        const val DEFAULT_MIN_BUFFER_MS_HIGH_RAM = 20_000
+        const val DEFAULT_MAX_BUFFER_MS_HIGH_RAM = 60_000
+        const val DEFAULT_MIN_BUFFER_MS = DEFAULT_MIN_BUFFER_MS_LOW_RAM
+        const val DEFAULT_MAX_BUFFER_MS = DEFAULT_MAX_BUFFER_MS_LOW_RAM
         const val DEFAULT_BUFFER_FOR_PLAYBACK_MS = 5_000
         const val DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 3_000
         const val DEFAULT_TARGET_BUFFER_SIZE_MB: Int = 150
@@ -256,8 +260,10 @@ data class PlayerSettings(
     val frameRateMatchingMode: FrameRateMatchingMode = FrameRateMatchingMode.OFF,
     val resolutionMatchingEnabled: Boolean = false,
     // Stream selection settings
-    val streamAutoPlayEnabled: Boolean = false,
-    val streamAutoPlayMode: StreamAutoPlayMode = StreamAutoPlayMode.MANUAL,
+    val streamAutoPlayEnabled: Boolean = true,
+    val streamAutoPlayMode: StreamAutoPlayMode = StreamAutoPlayMode.FIRST_STREAM,
+    val streamAutoPlayAllowTorrents: Boolean = false,
+    val streamAutoPlayBatchSources: Boolean = true,
     val streamAutoPlaySource: StreamAutoPlaySource = StreamAutoPlaySource.ALL_SOURCES,
     val streamAutoPlaySelectedAddons: Set<String> = emptySet(),
     val streamAutoPlaySelectedPlugins: Set<String> = emptySet(),
@@ -268,6 +274,9 @@ data class PlayerSettings(
     val streamAutoPlayTimeoutSeconds: Int = 3,
     val streamSelectionPolicy: String = com.nuvio.tv.core.player.StreamSelectionPolicy.FAST_START.name,
     val streamHeuristicProbeEnabled: Boolean = true,
+    val playbackSourceFailoverOnError: Boolean = true,
+    val playbackSourceFailoverOnRebuffer: Boolean = false,
+    val playbackQualityUpgradeEnabled: Boolean = true,
     val stillWatchingEnabled: Boolean = false,
     val stillWatchingEpisodeThreshold: Int = DEFAULT_STILL_WATCHING_EPISODE_THRESHOLD,
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
@@ -280,7 +289,7 @@ data class PlayerSettings(
     val subtitleOrganizationMode: SubtitleOrganizationMode = SubtitleOrganizationMode.NONE,
 
     // Networking
-    val bufferEngineEnabled: Boolean = false,
+    val bufferEngineEnabled: Boolean = MemoryBudget.defaultBufferEngineEnabled(),
     val parallelNetworkEnabled: Boolean = false,
     /** When true the device memory budget caps the buffer; when false Target Buffer Size drives it. */
     val bufferBudgetManaged: Boolean = DEFAULT_BUFFER_BUDGET_MANAGED,
@@ -300,6 +309,9 @@ data class PlayerSettings(
     // Nuvio ExoPlayer Performance Mode
     val nuvioPerformanceModeEnabled: Boolean = DEFAULT_NUVIO_PERFORMANCE_MODE_ENABLED
 ) {
+    val playbackSourceFailoverEnabled: Boolean
+        get() = playbackSourceFailoverOnError || playbackSourceFailoverOnRebuffer
+
     companion object {
         const val DEFAULT_STILL_WATCHING_EPISODE_THRESHOLD = 3
         const val MIN_STILL_WATCHING_EPISODE_THRESHOLD = 2
@@ -321,6 +333,13 @@ data class PlayerSettings(
 
         fun isBoundedTimeout(timeoutSeconds: Int): Boolean =
             timeoutSeconds > 0 && timeoutSeconds != STREAM_AUTOPLAY_TIMEOUT_UNLIMITED
+
+        const val DEFAULT_PLAYBACK_SOURCE_FAILOVER_ON_ERROR = true
+        const val DEFAULT_PLAYBACK_SOURCE_FAILOVER_ON_REBUFFER = false
+        const val DEFAULT_STREAM_AUTO_PLAY_ENABLED = true
+        const val DEFAULT_STREAM_AUTO_PLAY_ALLOW_TORRENTS = false
+        const val DEFAULT_STREAM_AUTO_PLAY_BATCH_SOURCES = true
+        const val DEFAULT_PLAYBACK_QUALITY_UPGRADE_ENABLED = true
 
         const val DEFAULT_BUFFER_BUDGET_MANAGED = true
         const val DEFAULT_ALLOW_LARGE_TARGET_BUFFER = false
@@ -512,8 +531,13 @@ class PlayerSettingsDataStore @Inject constructor(
     private val streamAutoPlayPreferBingeGroupForNextEpisodeKey = booleanPreferencesKey("stream_auto_play_prefer_bingegroup_next_episode")
     private val streamAutoPlayReuseBingeGroupKey = booleanPreferencesKey("stream_auto_play_reuse_binge_group")
     private val streamAutoPlayTimeoutSecondsKey = intPreferencesKey("stream_auto_play_timeout_seconds")
+    private val streamAutoPlayAllowTorrentsKey = booleanPreferencesKey("stream_auto_play_allow_torrents")
+    private val streamAutoPlayBatchSourcesKey = booleanPreferencesKey("stream_auto_play_batch_sources")
     private val streamSelectionPolicyKey = stringPreferencesKey("stream_selection_policy")
     private val streamHeuristicProbeEnabledKey = booleanPreferencesKey("stream_heuristic_probe_enabled")
+    private val playbackSourceFailoverOnErrorKey = booleanPreferencesKey("playback_source_failover_on_error")
+    private val playbackSourceFailoverOnRebufferKey = booleanPreferencesKey("playback_source_failover_on_rebuffer")
+    private val playbackQualityUpgradeEnabledKey = booleanPreferencesKey("playback_quality_upgrade_enabled")
     private val stillWatchingEnabledKey = booleanPreferencesKey("still_watching_enabled")
     private val stillWatchingEpisodeThresholdKey = intPreferencesKey("still_watching_episode_threshold")
     private val nextEpisodeThresholdModeKey = stringPreferencesKey("next_episode_threshold_mode")
@@ -581,6 +605,7 @@ class PlayerSettingsDataStore @Inject constructor(
     private val migrationAfterRebufferLoweredDoneKey = booleanPreferencesKey("migration_after_rebuffer_lowered_done")
     private val migrationBackBufferDurationReducedDoneKey = booleanPreferencesKey("migration_back_buffer_duration_reduced_done")
     private val migrationTargetBufferSizeReducedDoneKey = booleanPreferencesKey("migration_target_buffer_size_reduced_done")
+    private val migrationBufferEngineTieredDoneKey = booleanPreferencesKey("migration_buffer_engine_tiered_v1_done")
     init {
         ioScope.launch {
             profileManager.activeProfileId.collect { pid ->
@@ -708,6 +733,25 @@ class PlayerSettingsDataStore @Inject constructor(
                         prefs[targetBufferSizeMbKey] = BufferSettings.DEFAULT_TARGET_BUFFER_SIZE_MB
                     }
                     prefs[migrationTargetBufferSizeReducedDoneKey] = true
+                }
+
+                val bufferEngineTieredMigrated = prefs[migrationBufferEngineTieredDoneKey] ?: false
+                if (!bufferEngineTieredMigrated) {
+                    val engineNeverSet = prefs[bufferEngineEnabledKey] == null
+                    if (engineNeverSet && !MemoryBudget.isLowRamTier) {
+                        prefs[bufferEngineEnabledKey] = true
+                    }
+                    if (!MemoryBudget.isLowRamTier) {
+                        val currentMin = prefs[minBufferMsKey]
+                        val currentMax = prefs[maxBufferMsKey]
+                        if ((currentMin == null || currentMin == BufferSettings.DEFAULT_MIN_BUFFER_MS_LOW_RAM) &&
+                            (currentMax == null || currentMax == BufferSettings.DEFAULT_MAX_BUFFER_MS_LOW_RAM)
+                        ) {
+                            prefs[minBufferMsKey] = BufferSettings.DEFAULT_MIN_BUFFER_MS_HIGH_RAM
+                            prefs[maxBufferMsKey] = BufferSettings.DEFAULT_MAX_BUFFER_MS_HIGH_RAM
+                        }
+                    }
+                    prefs[migrationBufferEngineTieredDoneKey] = true
                 }
 
                 val min = prefs[minBufferMsKey]
@@ -856,14 +900,22 @@ class PlayerSettingsDataStore @Inject constructor(
                 } ?: if (prefs[frameRateMatchingKey] == true) FrameRateMatchingMode.START_STOP else FrameRateMatchingMode.OFF,
                 resolutionMatchingEnabled = prefs[resolutionMatchingEnabledKey] ?: false,
                 streamAutoPlayMode = prefs[streamAutoPlayModeKey]?.let {
-                    runCatching { StreamAutoPlayMode.valueOf(it) }.getOrDefault(StreamAutoPlayMode.MANUAL)
-                } ?: StreamAutoPlayMode.MANUAL,
-                streamAutoPlayEnabled = prefs[streamAutoPlayEnabledKey] ?: run {
-                    val mode = prefs[streamAutoPlayModeKey]?.let {
-                        runCatching { StreamAutoPlayMode.valueOf(it) }.getOrNull()
+                    runCatching { StreamAutoPlayMode.valueOf(it) }.getOrDefault(StreamAutoPlayMode.FIRST_STREAM)
+                } ?: StreamAutoPlayMode.FIRST_STREAM,
+                streamAutoPlayEnabled = when {
+                    prefs[streamAutoPlayEnabledKey] != null -> prefs[streamAutoPlayEnabledKey]!!
+                    prefs[streamAutoPlayModeKey] != null -> {
+                        val mode = runCatching {
+                            StreamAutoPlayMode.valueOf(prefs[streamAutoPlayModeKey]!!)
+                        }.getOrDefault(StreamAutoPlayMode.MANUAL)
+                        mode != StreamAutoPlayMode.MANUAL
                     }
-                    mode != null && mode != StreamAutoPlayMode.MANUAL
+                    else -> PlayerSettings.DEFAULT_STREAM_AUTO_PLAY_ENABLED
                 },
+                streamAutoPlayAllowTorrents = prefs[streamAutoPlayAllowTorrentsKey]
+                    ?: PlayerSettings.DEFAULT_STREAM_AUTO_PLAY_ALLOW_TORRENTS,
+                streamAutoPlayBatchSources = prefs[streamAutoPlayBatchSourcesKey]
+                    ?: PlayerSettings.DEFAULT_STREAM_AUTO_PLAY_BATCH_SOURCES,
                 streamAutoPlaySource = prefs[streamAutoPlaySourceKey]?.let {
                     runCatching { StreamAutoPlaySource.valueOf(it) }.getOrDefault(StreamAutoPlaySource.ALL_SOURCES)
                 } ?: StreamAutoPlaySource.ALL_SOURCES,
@@ -881,6 +933,12 @@ class PlayerSettingsDataStore @Inject constructor(
                 streamSelectionPolicy = prefs[streamSelectionPolicyKey]
                     ?: com.nuvio.tv.core.player.StreamSelectionPolicy.FAST_START.name,
                 streamHeuristicProbeEnabled = prefs[streamHeuristicProbeEnabledKey] ?: true,
+                playbackSourceFailoverOnError = prefs[playbackSourceFailoverOnErrorKey]
+                    ?: PlayerSettings.DEFAULT_PLAYBACK_SOURCE_FAILOVER_ON_ERROR,
+                playbackSourceFailoverOnRebuffer = prefs[playbackSourceFailoverOnRebufferKey]
+                    ?: PlayerSettings.DEFAULT_PLAYBACK_SOURCE_FAILOVER_ON_REBUFFER,
+                playbackQualityUpgradeEnabled = prefs[playbackQualityUpgradeEnabledKey]
+                    ?: PlayerSettings.DEFAULT_PLAYBACK_QUALITY_UPGRADE_ENABLED,
                 stillWatchingEnabled = prefs[stillWatchingEnabledKey] ?: false,
                 stillWatchingEpisodeThreshold = prefs[stillWatchingEpisodeThresholdKey]
                     ?.coerceIn(
@@ -916,7 +974,7 @@ class PlayerSettingsDataStore @Inject constructor(
                 } ?: PlayerSettings.DEFAULT_VOD_CACHE_SIZE_MODE,
                 vodCacheSizeMb = (prefs[vodCacheSizeMbKey] ?: PlayerSettings.DEFAULT_VOD_CACHE_SIZE_MB).coerceIn(PlayerSettings.MIN_VOD_CACHE_SIZE_MB, PlayerSettings.MAX_VOD_CACHE_SIZE_MB),
                 useParallelConnections = prefs[useParallelConnectionsKey] ?: PlayerSettings.DEFAULT_USE_PARALLEL_CONNECTIONS,
-                bufferEngineEnabled = prefs[bufferEngineEnabledKey] ?: false,
+                bufferEngineEnabled = prefs[bufferEngineEnabledKey] ?: MemoryBudget.defaultBufferEngineEnabled(),
                 parallelNetworkEnabled = prefs[parallelNetworkEnabledKey] ?: false,
                 allowLargeTargetBuffer = prefs[allowLargeTargetBufferKey] ?: PlayerSettings.DEFAULT_ALLOW_LARGE_TARGET_BUFFER,
                 bufferBudgetManaged = prefs[bufferBudgetManagedKey] ?: PlayerSettings.DEFAULT_BUFFER_BUDGET_MANAGED,
@@ -955,8 +1013,8 @@ class PlayerSettingsDataStore @Inject constructor(
                     outlineWidth = prefs[subtitleOutlineWidthKey] ?: 2
                 ),
                 bufferSettings = BufferSettings(
-                    minBufferMs = prefs[minBufferMsKey] ?: BufferSettings.DEFAULT_MIN_BUFFER_MS,
-                    maxBufferMs = prefs[maxBufferMsKey] ?: BufferSettings.DEFAULT_MAX_BUFFER_MS,
+                    minBufferMs = prefs[minBufferMsKey] ?: MemoryBudget.defaultMinBufferMs(),
+                    maxBufferMs = prefs[maxBufferMsKey] ?: MemoryBudget.defaultMaxBufferMs(),
                     bufferForPlaybackMs = prefs[bufferForPlaybackMsKey] ?: BufferSettings.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                     bufferForPlaybackAfterRebufferMs = prefs[bufferForPlaybackAfterRebufferMsKey] ?: BufferSettings.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
                     targetBufferSizeMb = prefs[targetBufferSizeMbKey]?.coerceAtLeast(0) ?: BufferSettings.DEFAULT_TARGET_BUFFER_SIZE_MB,
@@ -1257,6 +1315,30 @@ class PlayerSettingsDataStore @Inject constructor(
         }
     }
 
+    suspend fun setStreamAutoPlayAllowTorrents(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[streamAutoPlayAllowTorrentsKey] = enabled
+        }
+    }
+
+    suspend fun setStreamAutoPlayBatchSources(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[streamAutoPlayBatchSourcesKey] = enabled
+        }
+    }
+
+    suspend fun setStreamSelectionPolicy(policy: com.nuvio.tv.core.player.StreamSelectionPolicy) {
+        store().edit { prefs ->
+            prefs[streamSelectionPolicyKey] = policy.name
+        }
+    }
+
+    suspend fun setPlaybackQualityUpgradeEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[playbackQualityUpgradeEnabledKey] = enabled
+        }
+    }
+
     suspend fun setStillWatchingEnabled(enabled: Boolean) {
         store().edit { prefs ->
             prefs[stillWatchingEnabledKey] = enabled
@@ -1499,8 +1581,8 @@ class PlayerSettingsDataStore @Inject constructor(
 
     suspend fun resetBufferSettingsToDefaults() {
         store().edit { prefs ->
-            prefs[minBufferMsKey] = BufferSettings.DEFAULT_MIN_BUFFER_MS
-            prefs[maxBufferMsKey] = BufferSettings.DEFAULT_MAX_BUFFER_MS
+            prefs[minBufferMsKey] = MemoryBudget.defaultMinBufferMs()
+            prefs[maxBufferMsKey] = MemoryBudget.defaultMaxBufferMs()
             prefs[bufferForPlaybackMsKey] = BufferSettings.DEFAULT_BUFFER_FOR_PLAYBACK_MS
             prefs[bufferForPlaybackAfterRebufferMsKey] = BufferSettings.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
             prefs[targetBufferSizeMbKey] = BufferSettings.DEFAULT_TARGET_BUFFER_SIZE_MB
@@ -1533,6 +1615,14 @@ class PlayerSettingsDataStore @Inject constructor(
     suspend fun setUseParallelConnections(enabled: Boolean) { store().edit { it[useParallelConnectionsKey] = enabled } }
     suspend fun setBufferEngineEnabled(enabled: Boolean) {
         store().edit { it[bufferEngineEnabledKey] = enabled }
+    }
+
+    suspend fun setPlaybackSourceFailoverOnError(enabled: Boolean) {
+        store().edit { it[playbackSourceFailoverOnErrorKey] = enabled }
+    }
+
+    suspend fun setPlaybackSourceFailoverOnRebuffer(enabled: Boolean) {
+        store().edit { it[playbackSourceFailoverOnRebufferKey] = enabled }
     }
 
     suspend fun setParallelNetworkEnabled(enabled: Boolean) {

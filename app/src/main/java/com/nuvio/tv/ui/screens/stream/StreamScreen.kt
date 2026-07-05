@@ -127,6 +127,7 @@ fun StreamScreen(
     var showPlayerChoiceDialog by remember { mutableStateOf(false) }
     var pendingPlaybackInfo by remember { mutableStateOf<StreamPlaybackInfo?>(null) }
     val p2pEnabled by viewModel.p2pEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val autoPlayAllowTorrents by viewModel.autoPlayAllowTorrents.collectAsStateWithLifecycle(initialValue = false)
     val streamBadgeSettings by viewModel.streamBadgeSettings.collectAsStateWithLifecycle(
         initialValue = StreamBadgeSettings()
     )
@@ -195,7 +196,7 @@ fun StreamScreen(
             viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
             return
         }
-        if (playbackInfo.isTorrent && !p2pEnabled) {
+        if (playbackInfo.isTorrent && !autoPlayAllowTorrents) {
             viewModel.retryAutoPlayWithoutTorrents()
             return
         }
@@ -234,7 +235,9 @@ fun StreamScreen(
         } else {
             pendingRestoreOnResume = true
             routePlayback(playbackInfo)
-            viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+            if (!uiState.isDirectAutoPlayFlow) {
+                viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+            }
         }
     }
 
@@ -242,22 +245,26 @@ fun StreamScreen(
         onBackPress()
     }
 
-    LaunchedEffect(uiState.autoPlayStream, p2pEnabled) {
+    LaunchedEffect(uiState.autoPlayStream, autoPlayAllowTorrents) {
         val stream = uiState.autoPlayStream ?: return@LaunchedEffect
-        if (stream.isTorrent() && !p2pEnabled) {
+        if (stream.isTorrent() && !autoPlayAllowTorrents) {
             viewModel.retryAutoPlayWithoutTorrents()
             return@LaunchedEffect
         }
         // User aborted the auto-next chain that navigated here — don't auto-launch; show the list.
         if (viewModel.isAutoNextContinuationAborted()) {
             viewModel.consumeAbortedAutoNextContinuation()
-            viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+            viewModel.cancelPendingAutoPlay()
             return@LaunchedEffect
         }
         viewModel.prepareLaunchWarmup(stream)
         val playbackInfo = viewModel.resolveStreamForPlayback(stream)
         if (playbackInfo == null) {
-            viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+            if (!autoPlayAllowTorrents && stream.isTorrent()) {
+                viewModel.retryAutoPlayWithoutTorrents()
+            } else {
+                viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+            }
             return@LaunchedEffect
         }
         // Torrent streams have url == null but carry an infoHash; navigation
@@ -287,11 +294,11 @@ fun StreamScreen(
         // User aborted the auto-next chain that navigated here — don't auto-launch; show the list.
         if (viewModel.isAutoNextContinuationAborted()) {
             viewModel.consumeAbortedAutoNextContinuation()
-            viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+            viewModel.cancelPendingAutoPlay()
             return@LaunchedEffect
         }
         if (playbackInfo.url != null || (playbackInfo.isTorrent && playbackInfo.infoHash != null)) {
-            if (playbackInfo.isTorrent && !p2pEnabled) {
+            if (playbackInfo.isTorrent && !autoPlayAllowTorrents) {
                 viewModel.retryAutoPlayWithoutTorrents()
                 return@LaunchedEffect
             }

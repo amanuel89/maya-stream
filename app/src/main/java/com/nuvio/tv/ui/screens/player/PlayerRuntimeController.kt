@@ -38,6 +38,7 @@ import com.nuvio.tv.data.repository.EpisodeMappingEntry
 import com.nuvio.tv.data.repository.TraktEpisodeMappingService
 import com.nuvio.tv.data.repository.TraktScrobbleItem
 import com.nuvio.tv.data.repository.TraktScrobbleService
+import com.nuvio.tv.domain.model.Stream
 import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.domain.repository.AddonRepository
@@ -333,6 +334,29 @@ class PlayerRuntimeController(
     internal var rebufferCount: Int = 0
     internal var rebufferTotalMs: Long = 0L
     internal var rebufferStartedAtMs: Long = 0L
+
+    internal var playbackFailoverOnErrorEnabled: Boolean = true
+    internal var playbackFailoverOnRebufferEnabled: Boolean = false
+    internal val triedStreamKeys: MutableSet<String> = mutableSetOf()
+    internal var playbackFailoverCount: Int = 0
+    internal var lastPlaybackFailoverAtMs: Long = 0L
+    internal var stablePlaybackSinceMs: Long = 0L
+    internal val rebufferTimestampsMs: MutableList<Long> = mutableListOf()
+    internal var userPinnedSource: Boolean = false
+    internal var undoPreviousStream: Stream? = null
+    internal var undoPreviousPositionMs: Long = 0L
+    internal var undoExpiresAtMs: Long = 0L
+    internal var failoverCancelJob: Job? = null
+    internal var failoverUndoExpiryJob: Job? = null
+    internal var failoverInstalledAddonNames: Set<String> = emptySet()
+    internal var failoverRankingContext: com.nuvio.tv.core.player.StreamRankingContext? = null
+    internal var playbackQualityUpgradeEnabled: Boolean = true
+    internal var qualityUpgradeAllowTorrents: Boolean = true
+    internal var qualityUpgradeCount: Int = 0
+    internal var lastQualityUpgradeAtMs: Long = 0L
+    internal val triedQualityUpgradeKeys: MutableSet<String> = mutableSetOf()
+    internal var qualityUpgradeMonitorJob: Job? = null
+    internal var effectiveBufferMbAtStart: Int = 0
     /** Back buffer (ms) currently in force, after the first-frame DV7/low-RAM resolution. */
     internal var effectiveBackBufferDurationMs: Int = 0
     /** Custom LoadControl for this playback (null when using stock); used to resolve the back buffer at first frame. */
@@ -549,6 +573,7 @@ class PlayerRuntimeController(
     private fun observeTorrentSettings() {
         scope.launch {
             torrentSettings.settings.collect { settings ->
+                qualityUpgradeAllowTorrents = settings.p2pEnabled
                 _uiState.update { it.copy(hideTorrentStats = settings.hideTorrentStats) }
             }
         }
@@ -573,6 +598,7 @@ class PlayerRuntimeController(
         stopTorrentStream()
         startupLoadingReportJob?.cancel()
         vodTelemetryJob?.cancel()
+        qualityUpgradeMonitorJob?.cancel()
         mediaSourceFactory.shutdown()
         sourceChipErrorDismissJob?.cancel()
         sourceStreamsScope?.cancel()

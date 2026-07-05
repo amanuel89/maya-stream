@@ -1344,7 +1344,14 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             filterSourceStreamsByAddon(event.addonName)
         }
         is PlayerEvent.OnSourceStreamSelected -> {
+            onUserPinnedSourceStream()
             switchToSourceStream(event.stream)
+        }
+        PlayerEvent.OnCancelFailoverSwitch -> {
+            cancelPendingFailoverSwitch()
+        }
+        PlayerEvent.OnUndoFailoverSwitch -> {
+            undoLastPlaybackFailover()
         }
         PlayerEvent.OnDismissTransientOverlay -> {
             _uiState.update {

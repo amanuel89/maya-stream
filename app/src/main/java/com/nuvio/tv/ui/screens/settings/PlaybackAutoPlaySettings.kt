@@ -69,6 +69,7 @@ import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.NextEpisodeThresholdMode
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.StreamAutoPlaySource
+import com.nuvio.tv.core.player.StreamSelectionPolicy
 import com.nuvio.tv.ui.components.NuvioDialog
 import kotlin.math.roundToInt
 import java.util.Locale
@@ -88,6 +89,10 @@ internal fun LazyListScope.autoPlaySettingsItems(
     onSetNextEpisodeThresholdPercent: (Float) -> Unit,
     onSetNextEpisodeThresholdMinutesBeforeEnd: (Float) -> Unit,
     onSetStreamAutoPlayTimeoutSeconds: (Int) -> Unit,
+    onSetStreamAutoPlayAllowTorrents: (Boolean) -> Unit,
+    onSetStreamAutoPlayBatchSources: (Boolean) -> Unit,
+    onSetPlaybackQualityUpgradeEnabled: (Boolean) -> Unit,
+    onShowSelectionPolicyDialog: () -> Unit,
     onSetReuseLastLinkEnabled: (Boolean) -> Unit,
     onSetStillWatchingEnabled: (Boolean) -> Unit,
     onSetStillWatchingEpisodeThreshold: (Int) -> Unit,
@@ -136,6 +141,57 @@ internal fun LazyListScope.autoPlaySettingsItems(
             title = stringResource(R.string.autoplay_stream_selection),
             subtitle = modeLabel,
             onClick = onShowModeDialog,
+            onFocused = onItemFocused
+        )
+    }
+
+    item(key = "autoplay_quality_policy") {
+        val policy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy)
+        val policyLabel = when (policy) {
+            StreamSelectionPolicy.FAST_START -> stringResource(R.string.autoplay_policy_fast_start)
+            StreamSelectionPolicy.BALANCED -> stringResource(R.string.autoplay_policy_balanced)
+            StreamSelectionPolicy.QUALITY_FIRST -> stringResource(R.string.autoplay_policy_quality_first)
+            StreamSelectionPolicy.TORRENT_SAFE -> stringResource(R.string.autoplay_policy_torrent_safe)
+            StreamSelectionPolicy.MOBILE_SAVER -> stringResource(R.string.autoplay_policy_mobile_saver)
+        }
+        NavigationSettingsItem(
+            icon = Icons.Default.Tune,
+            title = stringResource(R.string.autoplay_quality_policy),
+            subtitle = policyLabel,
+            onClick = onShowSelectionPolicyDialog,
+            onFocused = onItemFocused
+        )
+    }
+
+    item(key = "autoplay_batch_sources") {
+        ToggleSettingsItem(
+            icon = Icons.Default.Language,
+            title = stringResource(R.string.autoplay_batch_sources),
+            subtitle = stringResource(R.string.autoplay_batch_sources_sub),
+            isChecked = playerSettings.streamAutoPlayBatchSources,
+            onCheckedChange = onSetStreamAutoPlayBatchSources,
+            onFocused = onItemFocused
+        )
+    }
+
+    item(key = "autoplay_allow_torrents") {
+        ToggleSettingsItem(
+            icon = Icons.Default.Extension,
+            title = stringResource(R.string.autoplay_allow_torrents),
+            subtitle = stringResource(R.string.autoplay_allow_torrents_sub),
+            isChecked = playerSettings.streamAutoPlayAllowTorrents,
+            onCheckedChange = onSetStreamAutoPlayAllowTorrents,
+            onFocused = onItemFocused
+        )
+    }
+
+    item(key = "autoplay_quality_upgrade") {
+        ToggleSettingsItem(
+            icon = Icons.Default.Visibility,
+            title = stringResource(R.string.autoplay_quality_upgrade),
+            subtitle = stringResource(R.string.autoplay_quality_upgrade_sub),
+            isChecked = playerSettings.playbackQualityUpgradeEnabled,
+            onCheckedChange = onSetPlaybackQualityUpgradeEnabled,
             onFocused = onItemFocused
         )
     }
@@ -362,6 +418,7 @@ internal fun AutoPlaySettingsDialogs(
     showPluginSelectionDialog: Boolean,
     showNextEpisodeThresholdModeDialog: Boolean,
     showReuseLastLinkCacheDialog: Boolean,
+    showSelectionPolicyDialog: Boolean,
     playerSettings: PlayerSettings,
     installedAddonNames: List<String>,
     enabledPluginNames: List<String>,
@@ -372,13 +429,15 @@ internal fun AutoPlaySettingsDialogs(
     onSetSelectedAddons: (Set<String>) -> Unit,
     onSetSelectedPlugins: (Set<String>) -> Unit,
     onSetReuseLastLinkCacheHours: (Int) -> Unit,
+    onSetSelectionPolicy: (StreamSelectionPolicy) -> Unit,
     onDismissModeDialog: () -> Unit,
     onDismissSourceDialog: () -> Unit,
     onDismissRegexDialog: () -> Unit,
     onDismissAddonSelectionDialog: () -> Unit,
     onDismissPluginSelectionDialog: () -> Unit,
     onDismissNextEpisodeThresholdModeDialog: () -> Unit,
-    onDismissReuseLastLinkCacheDialog: () -> Unit
+    onDismissReuseLastLinkCacheDialog: () -> Unit,
+    onDismissSelectionPolicyDialog: () -> Unit
 ) {
     if (showModeDialog) {
         StreamAutoPlayModeDialog(
@@ -446,6 +505,17 @@ internal fun AutoPlaySettingsDialogs(
         )
     }
 
+    if (showSelectionPolicyDialog) {
+        StreamSelectionPolicyDialog(
+            selectedPolicy = StreamSelectionPolicy.fromStoredName(playerSettings.streamSelectionPolicy),
+            onPolicySelected = {
+                onSetSelectionPolicy(it)
+                onDismissSelectionPolicyDialog()
+            },
+            onDismiss = onDismissSelectionPolicyDialog
+        )
+    }
+
     if (showReuseLastLinkCacheDialog) {
         StreamReuseLastLinkCacheDurationDialog(
             selectedHours = playerSettings.streamReuseLastLinkCacheHours,
@@ -508,6 +578,51 @@ private fun formatReuseCacheDuration(hours: Int): String {
             stringResource(R.string.cache_duration_days_hours, days, remainingHours)
         }
     }
+}
+
+@Composable
+private fun StreamSelectionPolicyDialog(
+    selectedPolicy: StreamSelectionPolicy,
+    onPolicySelected: (StreamSelectionPolicy) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(
+        SettingsPickerOption(
+            StreamSelectionPolicy.FAST_START,
+            stringResource(R.string.autoplay_policy_fast_start),
+            stringResource(R.string.autoplay_policy_fast_start_desc)
+        ),
+        SettingsPickerOption(
+            StreamSelectionPolicy.BALANCED,
+            stringResource(R.string.autoplay_policy_balanced),
+            stringResource(R.string.autoplay_policy_balanced_desc)
+        ),
+        SettingsPickerOption(
+            StreamSelectionPolicy.QUALITY_FIRST,
+            stringResource(R.string.autoplay_policy_quality_first),
+            stringResource(R.string.autoplay_policy_quality_first_desc)
+        ),
+        SettingsPickerOption(
+            StreamSelectionPolicy.TORRENT_SAFE,
+            stringResource(R.string.autoplay_policy_torrent_safe),
+            stringResource(R.string.autoplay_policy_torrent_safe_desc)
+        ),
+        SettingsPickerOption(
+            StreamSelectionPolicy.MOBILE_SAVER,
+            stringResource(R.string.autoplay_policy_mobile_saver),
+            stringResource(R.string.autoplay_policy_mobile_saver_desc)
+        )
+    )
+
+    SettingsSingleChoiceDialog(
+        title = stringResource(R.string.autoplay_quality_policy),
+        options = options,
+        selectedValue = selectedPolicy,
+        onOptionSelected = onPolicySelected,
+        onDismiss = onDismiss,
+        width = 560.dp,
+        maxHeight = 420.dp
+    )
 }
 
 @Composable

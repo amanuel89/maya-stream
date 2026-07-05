@@ -133,6 +133,10 @@ internal fun PlaybackSettingsSections(
     onSetStreamAutoPlayEnabled: (Boolean) -> Unit,
     onShowNextEpisodeThresholdModeDialog: () -> Unit,
     onShowReuseLastLinkCacheDialog: () -> Unit,
+    onShowSelectionPolicyDialog: () -> Unit,
+    onSetStreamAutoPlayAllowTorrents: (Boolean) -> Unit,
+    onSetStreamAutoPlayBatchSources: (Boolean) -> Unit,
+    onSetPlaybackQualityUpgradeEnabled: (Boolean) -> Unit,
     onSetStreamAutoPlayNextEpisodeEnabled: (Boolean) -> Unit,
     onSetStreamAutoPlayPreferBingeGroupForNextEpisode: (Boolean) -> Unit,
     onSetStreamAutoPlayReuseBingeGroup: (Boolean) -> Unit,
@@ -198,7 +202,9 @@ internal fun PlaybackSettingsSections(
     onSetVodCacheSizeMb: (Int) -> Unit,
     onResetBufferSettingsToDefaults: () -> Unit,
     onSetEnableHttp2: (Boolean) -> Unit,
-    onResetNetworkSettingsToDefaults: () -> Unit
+    onResetNetworkSettingsToDefaults: () -> Unit,
+    onSetPlaybackSourceFailoverOnError: (Boolean) -> Unit = {},
+    onSetPlaybackSourceFailoverOnRebuffer: (Boolean) -> Unit = {}
 ) {
     var generalExpanded by rememberSaveable { mutableStateOf(false) }
     var afrExpanded by rememberSaveable { mutableStateOf(false) }
@@ -577,12 +583,16 @@ internal fun PlaybackSettingsSections(
                 onShowRegexDialog = onShowStreamRegexDialog,
                 onShowNextEpisodeThresholdModeDialog = onShowNextEpisodeThresholdModeDialog,
                 onShowReuseLastLinkCacheDialog = onShowReuseLastLinkCacheDialog,
+                onShowSelectionPolicyDialog = onShowSelectionPolicyDialog,
+                onSetStreamAutoPlayTimeoutSeconds = onSetStreamAutoPlayTimeoutSeconds,
+                onSetStreamAutoPlayAllowTorrents = onSetStreamAutoPlayAllowTorrents,
+                onSetStreamAutoPlayBatchSources = onSetStreamAutoPlayBatchSources,
+                onSetPlaybackQualityUpgradeEnabled = onSetPlaybackQualityUpgradeEnabled,
                 onSetStreamAutoPlayNextEpisodeEnabled = onSetStreamAutoPlayNextEpisodeEnabled,
                 onSetStreamAutoPlayPreferBingeGroupForNextEpisode = onSetStreamAutoPlayPreferBingeGroupForNextEpisode,
                 onSetStreamAutoPlayReuseBingeGroup = onSetStreamAutoPlayReuseBingeGroup,
                 onSetNextEpisodeThresholdPercent = onSetNextEpisodeThresholdPercent,
                 onSetNextEpisodeThresholdMinutesBeforeEnd = onSetNextEpisodeThresholdMinutesBeforeEnd,
-                onSetStreamAutoPlayTimeoutSeconds = onSetStreamAutoPlayTimeoutSeconds,
                 onSetReuseLastLinkEnabled = onSetReuseLastLinkEnabled,
                 onSetStillWatchingEnabled = onSetStillWatchingEnabled,
                 onSetStillWatchingEpisodeThreshold = onSetStillWatchingEpisodeThreshold,
@@ -758,7 +768,9 @@ internal fun PlaybackSettingsSections(
                     onSetParallelConnectionCount = onSetParallelConnectionCount,
                     onSetParallelChunkSizeMb = onSetParallelChunkSizeMb,
                     onSetEnableHttp2 = onSetEnableHttp2,
-                    onResetNetworkToDefaults = onResetNetworkSettingsToDefaults
+                    onResetNetworkToDefaults = onResetNetworkSettingsToDefaults,
+                    onSetPlaybackSourceFailoverOnError = onSetPlaybackSourceFailoverOnError,
+                    onSetPlaybackSourceFailoverOnRebuffer = onSetPlaybackSourceFailoverOnRebuffer
                 )
             }
         }
@@ -1046,6 +1058,7 @@ internal fun PlaybackSettingsDialogsHost(
     showStreamRegexDialog: Boolean,
     showNextEpisodeThresholdModeDialog: Boolean,
     showReuseLastLinkCacheDialog: Boolean,
+    showSelectionPolicyDialog: Boolean,
     onSetPlayerPreference: (PlayerPreference) -> Unit,
     onDismissPlayerPreferenceDialog: () -> Unit,
     onSetInternalPlayerEngine: (InternalPlayerEngine) -> Unit,
@@ -1069,6 +1082,7 @@ internal fun PlaybackSettingsDialogsHost(
     onSetStreamAutoPlaySelectedAddons: (Set<String>) -> Unit,
     onSetStreamAutoPlaySelectedPlugins: (Set<String>) -> Unit,
     onSetReuseLastLinkCacheHours: (Int) -> Unit,
+    onSetSelectionPolicy: (com.nuvio.tv.core.player.StreamSelectionPolicy) -> Unit,
     onDismissLanguageDialog: () -> Unit,
     onDismissSecondaryLanguageDialog: () -> Unit,
     onDismissSubtitleStartupModeDialog: () -> Unit,
@@ -1087,7 +1101,8 @@ internal fun PlaybackSettingsDialogsHost(
     onDismissStreamAutoPlayAddonSelectionDialog: () -> Unit,
     onDismissStreamAutoPlayPluginSelectionDialog: () -> Unit,
     onDismissNextEpisodeThresholdModeDialog: () -> Unit,
-    onDismissReuseLastLinkCacheDialog: () -> Unit
+    onDismissReuseLastLinkCacheDialog: () -> Unit,
+    onDismissSelectionPolicyDialog: () -> Unit
 ) {
     if (showPlayerPreferenceDialog) {
         PlayerPreferenceDialog(
@@ -1168,6 +1183,7 @@ internal fun PlaybackSettingsDialogsHost(
         showPluginSelectionDialog = showStreamAutoPlayPluginSelectionDialog,
         showNextEpisodeThresholdModeDialog = showNextEpisodeThresholdModeDialog,
         showReuseLastLinkCacheDialog = showReuseLastLinkCacheDialog,
+        showSelectionPolicyDialog = showSelectionPolicyDialog,
         playerSettings = playerSettings,
         installedAddonNames = installedAddonNames,
         enabledPluginNames = enabledPluginNames,
@@ -1178,13 +1194,15 @@ internal fun PlaybackSettingsDialogsHost(
         onSetSelectedAddons = onSetStreamAutoPlaySelectedAddons,
         onSetSelectedPlugins = onSetStreamAutoPlaySelectedPlugins,
         onSetReuseLastLinkCacheHours = onSetReuseLastLinkCacheHours,
+        onSetSelectionPolicy = onSetSelectionPolicy,
         onDismissModeDialog = onDismissStreamAutoPlayModeDialog,
         onDismissSourceDialog = onDismissStreamAutoPlaySourceDialog,
         onDismissRegexDialog = onDismissStreamRegexDialog,
         onDismissAddonSelectionDialog = onDismissStreamAutoPlayAddonSelectionDialog,
         onDismissPluginSelectionDialog = onDismissStreamAutoPlayPluginSelectionDialog,
         onDismissNextEpisodeThresholdModeDialog = onDismissNextEpisodeThresholdModeDialog,
-        onDismissReuseLastLinkCacheDialog = onDismissReuseLastLinkCacheDialog
+        onDismissReuseLastLinkCacheDialog = onDismissReuseLastLinkCacheDialog,
+        onDismissSelectionPolicyDialog = onDismissSelectionPolicyDialog
     )
 }
 

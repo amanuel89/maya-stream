@@ -176,6 +176,13 @@ class StreamScreenViewModel @Inject constructor(
         .map { it.p2pEnabled }
         .distinctUntilChanged()
 
+    val autoPlayAllowTorrents = kotlinx.coroutines.flow.combine(
+        playerSettingsDataStore.playerSettings,
+        torrentSettings.settings
+    ) { settings, torrent ->
+        StreamAutoPlayPolicy.allowsTorrents(settings, torrent.p2pEnabled)
+    }.distinctUntilChanged()
+
     fun enableP2p() = torrentSettings.setP2pEnabled(true)
 
     fun retryAutoPlayWithoutTorrents() {
@@ -188,7 +195,19 @@ class StreamScreenViewModel @Inject constructor(
             val nonTorrentStreams = _uiState.value.allStreams.filterNot { it.isTorrent() }
             if (nonTorrentStreams.isEmpty()) {
                 if (_uiState.value.isLoading) {
-                    updateUiStateIfChanged { it.copy(autoPlayStream = null, autoPlayPlaybackInfo = null) }
+                    updateUiStateIfChanged {
+                        it.copy(
+                            autoPlayStream = null,
+                            autoPlayPlaybackInfo = null,
+                            isDirectAutoPlayFlow = true,
+                            showDirectAutoPlayOverlay = true,
+                            directAutoPlayMessage = if (playerSettings.showPlayerLoadingStatus) {
+                                context.getString(R.string.stream_finding_source)
+                            } else {
+                                null
+                            }
+                        )
+                    }
                     return@launch
                 }
                 revealManualStreamPicker()
@@ -217,11 +236,26 @@ class StreamScreenViewModel @Inject constructor(
                 )
             }
             if (pick != null) {
-                updateUiStateIfChanged { it.copy(autoPlayStream = pick) }
+                updateUiStateIfChanged {
+                    it.copy(
+                        autoPlayStream = pick,
+                        isDirectAutoPlayFlow = true,
+                        showDirectAutoPlayOverlay = true,
+                        directAutoPlayMessage = if (playerSettings.showPlayerLoadingStatus) {
+                            context.getString(R.string.stream_finding_source)
+                        } else {
+                            null
+                        }
+                    )
+                }
             } else {
                 revealManualStreamPicker()
             }
         }
+    }
+
+    fun cancelPendingAutoPlay() {
+        revealManualStreamPicker()
     }
 
     private fun revealManualStreamPicker() {
@@ -348,7 +382,7 @@ class StreamScreenViewModel @Inject constructor(
                         autoPlayStream = null,
                         autoPlayPlaybackInfo = null,
                         isDirectAutoPlayFlow = false,
-                        showDirectAutoPlayOverlay = if (keepOverlay) true else false,
+                        showDirectAutoPlayOverlay = keepOverlay || it.showDirectAutoPlayOverlay,
                         directAutoPlayMessage = null
                     )
                 }
@@ -403,7 +437,9 @@ class StreamScreenViewModel @Inject constructor(
         streamLoadJob = newScope.launch {
             streamLoadCompleted = false
             val playerSettings = playerSettingsDataStore.playerSettings.first()
-            val allowTorrents = torrentSettings.settings.first().p2pEnabled
+            val p2pEnabled = torrentSettings.settings.first().p2pEnabled
+            val allowTorrents = StreamAutoPlayPolicy.allowsTorrents(playerSettings, p2pEnabled)
+            val batchSourceCheck = playerSettings.streamAutoPlayBatchSources
             val quickPlayFlow = !manualSelection && playerSettings.streamAutoPlayEnabled
             if (manualSelection) {
                 directAutoPlayModeInitializedForSession = true
@@ -552,6 +588,7 @@ class StreamScreenViewModel @Inject constructor(
             }
 
             fun tryResolveQuickPlay(addonStreamGroups: List<AddonStreams>): Boolean {
+                if (batchSourceCheck) return false
                 if (!quickPlayFlow || resolvedAutoPlayTarget || autoPlayHandledForSession) return false
                 val streams = StreamAutoPlaySelector.orderAddonStreams(addonStreamGroups, installedAddonOrder)
                     .flatMap { it.streams }
@@ -663,7 +700,12 @@ class StreamScreenViewModel @Inject constructor(
                         // Compose observes it.
                         autoPlayStream = selectedAutoPlayStream ?: it.autoPlayStream,
                         error = null,
-                        showDirectAutoPlayOverlay = if (directAutoPlayFlowEnabledForSession || it.autoPlayPlaybackInfo != null) {
+                        showDirectAutoPlayOverlay = if (
+                            directAutoPlayFlowEnabledForSession ||
+                                it.autoPlayPlaybackInfo != null ||
+                                it.autoPlayStream != null ||
+                                selectedAutoPlayStream != null
+                        ) {
                             true
                         } else {
                             false
@@ -789,12 +831,18 @@ class StreamScreenViewModel @Inject constructor(
                                 applySuccess(merged, isAllLoaded = true)
                                 if (resolvedAutoPlayTarget) {
                                     autoSelectTriggered = true
-                                } else if (directAutoPlayFlowEnabledForSession && !isUnlimitedTimeout) {
+                                } else if (
+                                    directAutoPlayFlowEnabledForSession &&
+                                        !isUnlimitedTimeout &&
+                                        allowTorrents
+                                ) {
                                     // Bounded/instant timeout: no match found.
                                     // If there are still torrents with a pending
                                     // debrid cache check, wait for the next emission
                                     // (which will carry the CACHED/NOT_CACHED result)
                                     // instead of showing the picker immediately.
+                                    // When P2P is off, keep the overlay until all addons finish
+                                    // so direct/HTTP sources still loading are not skipped.
                                     val hasCheckingTorrents = merged.any { group ->
                                         group.streams.any { s ->
                                             s.isTorrent() && s.debridCacheStatus?.state == com.nuvio.tv.domain.model.StreamDebridCacheState.CHECKING
@@ -812,7 +860,7 @@ class StreamScreenViewModel @Inject constructor(
                                         }
                                     }
                                 }
-                            } else if (directFlowActive && persistedBingeGroup != null) {
+                            } else if (directFlowActive && persistedBingeGroup != null && !batchSourceCheck) {
                                 // Before timeout: eagerly check binge group only
                                 // (no fallback to FIRST_STREAM/REGEX yet). If a
                                 // match is found we can start playback immediately
@@ -913,7 +961,7 @@ class StreamScreenViewModel @Inject constructor(
             timeoutElapsed = true
             val directDebridLoadedByTimeout = !directDebridAvailable ||
                 lastSuccessData?.any { it.addonName in directDebridSourceNames } == true
-            if (!autoSelectTriggered && lastSuccessData != null && directDebridLoadedByTimeout) {
+            if (!autoSelectTriggered && lastSuccessData != null && directDebridLoadedByTimeout && !batchSourceCheck) {
                 applySuccess(lastSuccessData, isAllLoaded = true)
                 if (resolvedAutoPlayTarget) {
                     autoSelectTriggered = true
@@ -925,7 +973,13 @@ class StreamScreenViewModel @Inject constructor(
             // user sees the stream picker.
             // For unlimited: keep the overlay — we continue checking as more
             // addons respond until the hard timeout below.
-            if (directFlowActive && !resolvedAutoPlayTarget && lastSuccessData != null && !isUnlimitedTimeout) {
+            if (
+                directFlowActive &&
+                    !resolvedAutoPlayTarget &&
+                    lastSuccessData != null &&
+                    !isUnlimitedTimeout &&
+                    (allowTorrents || !streamLoadInner.isActive)
+            ) {
                 // If torrents are still pending cache check, the next emission
                 // will carry the result — don't tear down yet.
                 val hasCheckingTorrents = lastSuccessData?.any { group ->
@@ -1348,6 +1402,10 @@ class StreamScreenViewModel @Inject constructor(
     }
 
     fun onInternalPlayerLaunching() {
+        val state = _uiState.value
+        if (state.isDirectAutoPlayFlow || state.autoPlayStream != null || state.autoPlayPlaybackInfo != null) {
+            return
+        }
         updateUiStateIfChanged {
             it.copy(showDirectAutoPlayOverlay = false, directAutoPlayMessage = null)
         }

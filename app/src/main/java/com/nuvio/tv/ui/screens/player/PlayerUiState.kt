@@ -183,6 +183,10 @@ data class PlayerUiState(
     // Stream source badge
     val showStreamSourceIndicator: Boolean = false,
     val streamSourceIndicatorText: String = "",
+    val failoverCancelVisible: Boolean = false,
+    val failoverCancelMessage: String = "",
+    val failoverCancelCountdownSec: Int = 0,
+    val showFailoverUndo: Boolean = false,
     val showPlayerEngineSwitchInfo: Boolean = false,
     val playerEngineSwitchInfoText: String = "",
     // Frame rate matching
@@ -305,6 +309,8 @@ sealed class PlayerEvent {
     data object OnReloadSourceStreams : PlayerEvent()
     data class OnSourceAddonFilterSelected(val addonName: String?) : PlayerEvent()
     data class OnSourceStreamSelected(val stream: Stream) : PlayerEvent()
+    data object OnCancelFailoverSwitch : PlayerEvent()
+    data object OnUndoFailoverSwitch : PlayerEvent()
     data object OnDismissTransientOverlay : PlayerEvent()
     data object OnRetry : PlayerEvent()
     data object OnReportPlaybackIssue : PlayerEvent()

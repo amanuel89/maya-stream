@@ -64,7 +64,9 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
     onSetParallelConnectionCount: (Int) -> Unit,
     onSetParallelChunkSizeMb: (Int) -> Unit,
     onSetEnableHttp2: (Boolean) -> Unit,
-    onResetNetworkToDefaults: () -> Unit
+    onResetNetworkToDefaults: () -> Unit,
+    onSetPlaybackSourceFailoverOnError: (Boolean) -> Unit,
+    onSetPlaybackSourceFailoverOnRebuffer: (Boolean) -> Unit
 ) {
     val isSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
 
@@ -112,12 +114,46 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
 
     // ── Master toggle: custom buffer engine ──
     item(key = "buffer_net_custom_buffers") {
+        val bufferSubtitle = if (MemoryBudget.isLowRamTier) {
+            stringResource(R.string.playback_buffer_custom_sub_low_ram)
+        } else {
+            stringResource(R.string.playback_buffer_custom_sub_high_ram)
+        }
         ToggleSettingsItem(
             icon = Icons.Default.Tune,
             title = stringResource(R.string.playback_buffer_custom),
-            subtitle = stringResource(R.string.playback_buffer_custom_sub),
+            subtitle = bufferSubtitle,
             isChecked = playerSettings.bufferEngineEnabled,
             onCheckedChange = onSetBufferEngineEnabled
+        )
+    }
+
+    item(key = "buffer_net_source_resilience_header") {
+        Text(
+            text = stringResource(R.string.playback_source_resilience_header),
+            style = MaterialTheme.typography.titleMedium,
+            color = NuvioTheme.colors.TextSecondary,
+            modifier = Modifier.padding(vertical = NuvioTheme.spacing.sm)
+        )
+    }
+
+    item(key = "buffer_net_failover_on_error") {
+        ToggleSettingsItem(
+            icon = Icons.Default.Refresh,
+            title = stringResource(R.string.playback_failover_on_error),
+            subtitle = stringResource(R.string.playback_failover_on_error_sub),
+            isChecked = playerSettings.playbackSourceFailoverOnError,
+            onCheckedChange = onSetPlaybackSourceFailoverOnError
+        )
+    }
+
+    item(key = "buffer_net_failover_on_rebuffer") {
+        ToggleSettingsItem(
+            icon = Icons.Default.History,
+            title = stringResource(R.string.playback_failover_on_rebuffer),
+            subtitle = stringResource(R.string.playback_failover_on_rebuffer_sub),
+            isChecked = playerSettings.playbackSourceFailoverOnRebuffer,
+            onCheckedChange = onSetPlaybackSourceFailoverOnRebuffer
         )
     }
 

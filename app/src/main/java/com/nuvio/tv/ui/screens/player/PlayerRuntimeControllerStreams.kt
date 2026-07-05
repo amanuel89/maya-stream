@@ -6,8 +6,10 @@ import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.nuvio.tv.core.debrid.DirectDebridPlayableResult
 import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
 import com.nuvio.tv.core.player.StreamSelectionPolicy
+import com.nuvio.tv.core.player.playbackMergeKey
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.StreamAutoPlaySource
@@ -207,6 +209,14 @@ internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
         val installedAddons = addonRepository.getInstalledAddons().first().enabledAddons()
         val installedAddonOrder = installedAddons.map { it.displayName }
         val installedAddonNames = installedAddonOrder.toSet()
+        failoverInstalledAddonNames = installedAddonNames
+        currentPlayerSettingsForReport?.let { settings ->
+            failoverRankingContext = com.nuvio.tv.core.player.StreamRankingContext(
+                policy = StreamSelectionPolicy.fromStoredName(settings.streamSelectionPolicy),
+                installedAddonNames = installedAddonNames,
+                allowTorrents = settings.streamAutoPlayMode != StreamAutoPlayMode.MANUAL
+            )
+        }
         var debridPreparationLaunched = false
 
         // On resume, skip chip reset — keep existing chip statuses
@@ -271,6 +281,7 @@ internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
                             sourceStreamsError = null
                         )
                     }
+                    evaluateQualityUpgradeIfEligible()
                     launchSourceDebridPreparationIfNeeded(
                         launched = debridPreparationLaunched,
                         streams = allStreams,
@@ -306,14 +317,10 @@ internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
  */
 private fun mergeSourceStreams(cached: List<Stream>, fresh: List<Stream>): List<Stream> {
     val merged = LinkedHashMap<String, Stream>()
-    cached.forEach { stream -> merged[stream.mergeKey()] = stream }
-    fresh.forEach { stream -> merged[stream.mergeKey()] = stream }
+    cached.forEach { stream -> merged[stream.playbackMergeKey()] = stream }
+    fresh.forEach { stream -> merged[stream.playbackMergeKey()] = stream }
     return merged.values.toList()
 }
-
-private fun Stream.mergeKey(): String =
-    infoHash?.lowercase()?.let { hash -> "$addonName|$hash:${fileIdx ?: ""}" }
-        ?: "$addonName|${getStreamUrl() ?: externalUrl ?: ytId ?: "${name}:${title}"}"
 
 private fun PlayerRuntimeController.launchSourceDebridPreparationIfNeeded(
     launched: Boolean,
@@ -361,6 +368,7 @@ private fun PlayerRuntimeController.replacePreparedSourceStream(
             )
         }
     }
+    evaluateQualityUpgradeIfEligible()
 }
 
 internal fun PlayerRuntimeController.dismissSourcesPanel() {
@@ -654,7 +662,11 @@ private fun PlayerRuntimeController.openExternalStreamInBrowser(
 
 @androidx.annotation.OptIn(UnstableApi::class)
 internal fun PlayerRuntimeController.switchToSourceStream(
-    stream: Stream
+    stream: Stream,
+    resumePositionMs: Long? = null,
+    autoFailover: Boolean = false,
+    isUndo: Boolean = false,
+    silentQualityUpgrade: Boolean = false
 ) {
     sourceStreamsScope?.cancel()
     sourceStreamsScope = null
@@ -764,7 +776,7 @@ internal fun PlayerRuntimeController.switchToSourceStream(
             isTorrentStream = false
         )
     }
-    showStreamSourceIndicator(stream)
+    showStreamSourceIndicator(stream, autoSwitched = autoFailover && !silentQualityUpgrade)
     resetPostPlayOverlayState(clearEpisode = false)
 
     _exoPlayer?.let { player ->
@@ -798,7 +810,11 @@ internal fun PlayerRuntimeController.switchToSourceStream(
         initializePlayer(url, newHeaders)
     }
 
-    loadSavedProgressFor(currentSeason, currentEpisode)
+    if (resumePositionMs != null && resumePositionMs > 0L) {
+        _uiState.update { it.copy(pendingSeekPosition = resumePositionMs) }
+    } else if (!autoFailover && !isUndo) {
+        loadSavedProgressFor(currentSeason, currentEpisode)
+    }
 }
 
 internal fun PlayerRuntimeController.dismissEpisodesPanel() {
@@ -1530,7 +1546,10 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
     nextEpisodeAutoPlayJob = scope.launch {
         try {
             val playerSettings = playerSettingsDataStore.playerSettings.first()
-            val allowTorrents = torrentSettings.settings.first().p2pEnabled
+            val allowTorrents = StreamAutoPlayPolicy.allowsTorrents(
+                playerSettings = playerSettings,
+                globalP2pEnabled = torrentSettings.settings.first().p2pEnabled
+            )
             val shouldAutoSelectInManualMode =
                 !playerSettings.streamAutoPlayEnabled &&
                     (

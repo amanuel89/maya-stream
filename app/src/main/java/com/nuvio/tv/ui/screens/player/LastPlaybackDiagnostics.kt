@@ -39,6 +39,8 @@ data class LastPlaybackDiagnostics(
     // Buffer/Network toggles
     val bufferEngineEnabled: Boolean = false,
     val parallelNetworkEnabled: Boolean = false,
+    val memoryTierLowRam: Boolean = false,
+    val effectiveBufferMbAtStart: Int = 0,
 
     // Outcome
     val firstFrameMs: Long = -1L,        // -1 = never rendered
@@ -80,6 +82,8 @@ data class LastPlaybackDiagnostics(
         put("dv7AutoDecision", dv7AutoDecision ?: JSONObject.NULL)
         put("bufferEngineEnabled", bufferEngineEnabled)
         put("parallelNetworkEnabled", parallelNetworkEnabled)
+        put("memoryTierLowRam", memoryTierLowRam)
+        put("effectiveBufferMbAtStart", effectiveBufferMbAtStart)
         put("firstFrameMs", firstFrameMs)
         put("dv7DoviCalls", dv7DoviCalls)
         put("dv7DoviSuccess", dv7DoviSuccess)
@@ -119,6 +123,8 @@ data class LastPlaybackDiagnostics(
                 dv7AutoDecision = o.optString("dv7AutoDecision", "").let { if (it.isBlank() || it == "null") null else it },
                 bufferEngineEnabled = o.optBoolean("bufferEngineEnabled", false),
                 parallelNetworkEnabled = o.optBoolean("parallelNetworkEnabled", false),
+                memoryTierLowRam = o.optBoolean("memoryTierLowRam", false),
+                effectiveBufferMbAtStart = o.optInt("effectiveBufferMbAtStart", 0),
                 firstFrameMs = o.optLong("firstFrameMs", -1L),
                 dv7DoviCalls = o.optInt("dv7DoviCalls", 0),
                 dv7DoviSuccess = o.optInt("dv7DoviSuccess", 0),

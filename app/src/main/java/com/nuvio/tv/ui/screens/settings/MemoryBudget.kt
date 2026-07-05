@@ -44,6 +44,16 @@ object MemoryBudget {
     /** True when the app heap is below the high-RAM threshold (Fire TV / TV-stick class). */
     val isLowRamTier: Boolean = maxHeapMb < HIGH_HEAP_THRESHOLD_MB
 
+    fun defaultBufferEngineEnabled(): Boolean = !isLowRamTier
+
+    fun defaultMinBufferMs(): Int =
+        if (isLowRamTier) BufferSettings.DEFAULT_MIN_BUFFER_MS_LOW_RAM
+        else BufferSettings.DEFAULT_MIN_BUFFER_MS_HIGH_RAM
+
+    fun defaultMaxBufferMs(): Int =
+        if (isLowRamTier) BufferSettings.DEFAULT_MAX_BUFFER_MS_LOW_RAM
+        else BufferSettings.DEFAULT_MAX_BUFFER_MS_HIGH_RAM
+
     // Pre-cap ratio budget; conversionBudgetMb derives from this so DV7 headroom isn't cut by the cap.
     private val rawBudgetMb: Int =
         (maxHeapMb * (if (isLowRamTier) LOW_HEAP_RATIO else HIGH_HEAP_RATIO)).toInt()

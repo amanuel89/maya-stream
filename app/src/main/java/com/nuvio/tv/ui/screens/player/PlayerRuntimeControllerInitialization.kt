@@ -61,6 +61,7 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.player.DolbyVisionCodecFallback
 import com.nuvio.tv.core.player.DolbyVisionBaseLayerPolicy
 import com.nuvio.tv.core.player.BitrateAwareLoadControl
+import com.nuvio.tv.core.player.FailoverTrigger
 import com.nuvio.tv.core.player.DolbyVisionConversionConfig
 import com.nuvio.tv.core.player.DolbyVisionConversionStats
 import com.nuvio.tv.core.player.DolbyVisionExtractorsFactory
@@ -287,6 +288,7 @@ internal fun PlayerRuntimeController.initializePlayer(
             rebufferCount = 0
             rebufferTotalMs = 0L
             rebufferStartedAtMs = 0L
+            resetPlaybackFailoverSession()
 
             // Resolve effective DV7 mode — AUTO consults the display-capability policy.
             // The persisted enum stays as-is; only the runtime behavior is derived per playback.
@@ -464,6 +466,14 @@ internal fun PlayerRuntimeController.initializePlayer(
                         .coerceAtLeast(MemoryBudget.MIN_BUFFER_MB)
                 }
                 val budgetBytes = budgetMbEffective.toLong() * 1024L * 1024L
+                effectiveBufferMbAtStart = budgetMbEffective
+                currentDiagnostics = currentDiagnostics.copy(effectiveBufferMbAtStart = budgetMbEffective)
+                if (MemoryBudget.isLowRamTier && playerSettings.bufferEngineEnabled) {
+                    Log.i(
+                        PlayerRuntimeController.TAG,
+                        "BUFFER_GATE: lowRamOptIn=true budgetMb=$budgetMbEffective host=${url.safeHost()}"
+                    )
+                }
                 // Build with the user's back buffer so seek-back works immediately (it can't
                 // depend on the player re-polling the LoadControl). First frame only lowers it
                 // to 0 for confirmed DV7 on low-RAM; everything else keeps it.
@@ -543,7 +553,8 @@ internal fun PlayerRuntimeController.initializePlayer(
 
             currentDiagnostics = currentDiagnostics.copy(
                 bufferEngineEnabled = playerSettings.bufferEngineEnabled,
-                parallelNetworkEnabled = playerSettings.parallelNetworkEnabled
+                parallelNetworkEnabled = playerSettings.parallelNetworkEnabled,
+                memoryTierLowRam = MemoryBudget.isLowRamTier
             )
 
             val safeAudioModeEnabled = safeAudioForcedStreamUrls.contains(url)
@@ -961,6 +972,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                             if (hasRenderedFirstFrame && rebufferStartedAtMs == 0L) {
                                 rebufferCount += 1
                                 rebufferStartedAtMs = SystemClock.elapsedRealtime()
+                                recordRebufferForFailover(System.currentTimeMillis())
                                 playbackAnalyticsDiagnostics.onRebufferStarted(this@apply, rebufferCount)
                                 Log.i(
                                     PlayerRuntimeController.TAG,
@@ -969,6 +981,8 @@ internal fun PlayerRuntimeController.initializePlayer(
                                         "dv7dovi=${isExperimentalDv7ToDv81ActiveForCurrentPlayback} " +
                                         "host=${currentStreamUrl.safeHost()}"
                                 )
+                            } else if (hasRenderedFirstFrame && rebufferStartedAtMs > 0L) {
+                                evaluateSustainedRebufferFailover()
                             }
                         } else if (rebufferStartedAtMs != 0L) {
                             val lastRebufferMs = (SystemClock.elapsedRealtime() - rebufferStartedAtMs).coerceAtLeast(0L)
@@ -1170,6 +1184,9 @@ internal fun PlayerRuntimeController.initializePlayer(
                             )
                         }
                         finishLoadingDiagnostics("first_frame_rendered")
+                        prefetchSourceStreamsForFailoverIfNeeded()
+                        markStablePlaybackAnchor()
+                        scheduleQualityUpgradeMonitor()
 
                         val startupMs = (System.currentTimeMillis() - playerInitializationStartedAtMs).coerceAtLeast(0L)
                         val conversionCalls = DoviBridge.getConversionCallCount()
@@ -1423,6 +1440,9 @@ internal fun PlayerRuntimeController.initializePlayer(
                             return
                         }
                         if (attemptAutoRetry(error, detailedError)) {
+                            return
+                        }
+                        if (maybeSchedulePlaybackSourceFailover(FailoverTrigger.ERROR)) {
                             return
                         }
 

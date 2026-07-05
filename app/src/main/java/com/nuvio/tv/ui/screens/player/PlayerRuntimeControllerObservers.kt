@@ -358,6 +358,14 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
             nextEpisodeThresholdMinutesBeforeEndSetting = settings.nextEpisodeThresholdMinutesBeforeEnd
             stillWatchingEnabledSetting = settings.stillWatchingEnabled
             stillWatchingEpisodeThresholdSetting = settings.stillWatchingEpisodeThreshold
+            playbackFailoverOnErrorEnabled = settings.playbackSourceFailoverOnError
+            playbackFailoverOnRebufferEnabled = settings.playbackSourceFailoverOnRebuffer
+            playbackQualityUpgradeEnabled = settings.playbackQualityUpgradeEnabled
+            failoverRankingContext = com.nuvio.tv.core.player.StreamRankingContext(
+                policy = com.nuvio.tv.core.player.StreamSelectionPolicy.fromStoredName(settings.streamSelectionPolicy),
+                installedAddonNames = failoverInstalledAddonNames,
+                allowTorrents = settings.streamAutoPlayMode != com.nuvio.tv.data.local.StreamAutoPlayMode.MANUAL
+            )
 
             // VOD cache config is gated by the "Custom Playback Buffers" master.
             // When the master is off the cache is disabled at player build time, so

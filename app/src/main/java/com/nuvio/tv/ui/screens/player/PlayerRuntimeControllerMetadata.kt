@@ -340,19 +340,28 @@ internal fun PlayerRuntimeController.evaluatePostPlayOverlayVisibility(positionM
     }
 }
 
-internal fun PlayerRuntimeController.showStreamSourceIndicator(stream: Stream) {
+internal fun PlayerRuntimeController.showStreamSourceIndicator(
+    stream: Stream,
+    autoSwitched: Boolean = false
+) {
     val chosenSource = (stream.name?.takeIf { it.isNotBlank() } ?: stream.addonName).trim()
     if (chosenSource.isBlank()) return
 
     hideStreamSourceIndicatorJob?.cancel()
+    val durationMs = if (autoSwitched) {
+        com.nuvio.tv.core.player.StreamPlaybackFailoverPolicy.POST_SWITCH_DISCLOSURE_MS
+    } else {
+        2200L
+    }
+    val text = if (autoSwitched) "Auto-switched · $chosenSource" else "Source: $chosenSource"
     _uiState.update {
         it.copy(
             showStreamSourceIndicator = true,
-            streamSourceIndicatorText = "Source: $chosenSource"
+            streamSourceIndicatorText = text
         )
     }
     hideStreamSourceIndicatorJob = scope.launch {
-        delay(2200)
+        delay(durationMs)
         _uiState.update { it.copy(showStreamSourceIndicator = false) }
     }
 }
